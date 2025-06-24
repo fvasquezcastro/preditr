@@ -127,4 +127,51 @@ Each row in this file defines one editor. The following columns must be complete
 
 | Column Name       | Description                                                                                                                                              | Example |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| **name** | A unique name for the editor, used to link to targets.                                                                                                   | `ABE8e
+| **name** | A unique name for the editor, used to link to targets.                                                                                                   | `ABE8e`   |
+| **pam_sequence** | The Protospacer Adjacent Motif (PAM) sequence. Use 'N' for any nucleotide.                                                                               | `NGG`     |
+| **spacer_length** | The length (in nucleotides) of the guide RNA's spacer sequence.                                                                                            | `20`      |
+| **edit_type** | The specific base conversion the editor performs: adenine to guanine (`a2g`) or cytosine to thymine (`c2t`).                                               | `a2g`     |
+| **edit_window_min** | The start of the editing window; the closest position to the PAM (excluding the PAM) where editing can occur. This must be a negative number.           | `-13`     |
+| **edit_window_max** | The end of the editing window; the furthest position from the PAM where editing can occur. This must also be a negative number.                          | `-17`     |
+
+After populating the template, save it as a CSV file and upload it to PrEditR.
+
+#### Defining Your Targets
+
+A CSV file describing the specific genomic targets for editing is also required.
+
+Click the **Download Targets File Template** button to get a correctly formatted file.
+
+Each row in this file represents an independent editing task. The columns are described below:
+
+| Column Name       | Description                                                                                                                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **gene_symbol** | The official symbol for the target gene (e.g., `KRAS`). The `ensembl_id` may be left blank if this is provided.                                                                                       |
+| **ensembl_id** | The Ensembl transcript ID (e.g., `ENST00000256078`). Using a transcript ID is recommended for precision. If only a gene symbol is provided, the tool will report results for the first transcript found containing the target amino acid at the specified position. |
+| **target_aa** | The single-letter code for the target amino acid (e.g., `W` for Tryptophan).                                                                                                                         |
+| **target_position** | The numerical position of the target amino acid within the protein sequence.                                                                                                                       |
+| **editor** | The name of the editor for this target. This name must match a `name` from the `editors.csv` file.                                                                                                     |
+| **edit_type** | The type of edit (`a2g` or `c2t`). This must match the `edit_type` defined for the chosen editor in the `editors.csv` file.                                                                            |
+
+The targets file allows for flexibility:
+
+* Rows can use either Ensembl IDs or gene symbols.
+* Different editors can be specified for different targets within the same run, provided each editor is defined in the editors file.
+
+Once the targets file is ready, save it as a CSV and upload it via the **Upload targets CSV** button.
+
+#### Running the Analysis
+
+After all parameters are set and files are uploaded:
+
+1.  Click the blue **Run Batch** button.
+2.  An animated progress bar will indicate that the analysis is in progress. The analysis duration depends on the job size.
+3.  Upon completion, a pop-up window will appear:
+    * A **success message** indicates that the run finished correctly. Output files will be located in the local directory that was bound as a volume.
+    * An **error message** indicates that the run failed. This is commonly caused by insufficient memory (RAM). If this occurs, reduce the number of `Threads` and run the analysis again.
+
+---
+
+## Command Line Version
+
+*Documentation to be added here.*
