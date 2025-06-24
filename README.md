@@ -1,6 +1,12 @@
 # PrEditR Documentation
 
-This document provides instructions for running PrEditR, either through the Shiny interface or via the command line.
+This document provides instructions for running PrEditR, either through the command line or the user-friendly Shiny interface.
+
+## Command Line Version
+
+*Documentation to be added here.*
+
+---
 
 ## Shiny App Version
 
@@ -169,9 +175,3 @@ After all parameters are set and files are uploaded:
 3.  Upon completion, a pop-up window will appear:
     * A **success message** indicates that the run finished correctly. Output files will be located in the local directory that was bound as a volume.
     * An **error message** indicates that the run failed. This is commonly caused by insufficient memory (RAM). If this occurs, reduce the number of `Threads` and run the analysis again.
-
----
-
-## Command Line Version
-
-*Documentation to be added here.*
