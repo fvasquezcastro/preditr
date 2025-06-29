@@ -18,6 +18,8 @@ This document provides instructions for running PrEditR, either through the comm
     - [Defining Your Targets](#defining-your-targets)
     - [Running the Analysis](#running-the-analysis)
     - [Stopping and Cleaning Up](#stopping-and-cleaning-up)
+-[Understanding the Output](#understanding-the-output)
+-[Troubleshooting and Reporting Issues](#troubleshooting-and-reporting-issues)
 
 ## Command Line Version
 
@@ -196,10 +198,10 @@ Closing the browser tab does not terminate the container, which continues to run
 3.  Click the **stop button** to halt the application.
 4.  To remove the stopped container, click the **delete button**. This action deletes the container instance, but the pulled image is preserved in the `Images` tab for future use.
 
-## Understanding the output
+## Understanding the Output
 
 Stuff here
 
-## Troubleshooting and Error Reporting
+## Troubleshooting and Reporting Issues
 
 More stuff here
