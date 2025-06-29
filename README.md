@@ -11,7 +11,7 @@ This document provides instructions for running PrEditR, either through the comm
   - [4. Accessing PrEditR](#4-accessing-preditr)
   - [5. Managing PrEditR Containers](#5-managing-preditr-containers)
   - [6. Using the PrEditR Shiny App](#6-using-the-preditr-shiny-app)
-    - [Main Page: Setting Up Your Run](#main-page-setting-up-your-run)
+    - [Setting Up Your Run](#setting-up-your-run)
       - [General Parameters](#general-parameters)
       - [Off-Target Search](#off-target-search)
     - [Defining Your Base Editors](#defining-your-base-editors)
@@ -107,7 +107,7 @@ Multiple instances of PrEditR can run simultaneously in different containers. To
 
 This section describes the parameters and input files required to run an analysis in PrEditR.
 
-#### Main Page: Setting Up Your Run
+#### Setting Up Your Run
 
 The application's homepage contains several parameters to configure for an analysis.
 
