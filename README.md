@@ -148,7 +148,7 @@ Each row in this file defines one editor. The following columns must be complete
 | **pam_sequence** | The Protospacer Adjacent Motif (PAM) sequence. Use 'N' for any nucleotide.                                                                               | `NGG`     |
 | **spacer_length** | The length (in nucleotides) of the guide RNA's spacer sequence.                                                                                            | `20`      |
 | **edit_type** | The specific base conversion the editor performs: adenine to guanine (`a2g`), cytosine to thymine (`c2t`), thymine to guanine (`t2g`), adenine to cytosine (`a2c`), ...                                               | `a2g`     |
-| **edit_window_min** | The start of the editing window; the closest position to the PAM (excluding the PAM) where editing can occur. This must be a negative number. This assumes that the PAM sequence is located 3' of the editing window.          | `-13`     |
+| **edit_window_min** | The start of the editing window; the closest position to the PAM (excluding the PAM) where editing can occur. This must be a negative number. This assumes that the PAM sequence is located at 3' of the editing window.          | `-13`     |
 | **edit_window_max** | The end of the editing window; the furthest position from the PAM where editing can occur. This must also be a negative number.                          | `-17`     |
 
 After populating the template, save it as a CSV file and upload it to PrEditR.
