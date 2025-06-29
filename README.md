@@ -196,3 +196,10 @@ Closing the browser tab does not terminate the container, which continues to run
 3.  Click the **stop button** to halt the application.
 4.  To remove the stopped container, click the **delete button**. This action deletes the container instance, but the pulled image is preserved in the `Images` tab for future use.
 
+## Understanding the output
+
+Stuff here
+
+## Troubleshooting and Error Reporting
+
+More stuff here
