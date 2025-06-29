@@ -2,6 +2,23 @@
 
 This document provides instructions for running PrEditR, either through the command line or the Shiny interface.
 
+## Table of Contents
+- [Command Line Version](#command-line-version)
+- [Shiny App Version](#shiny-app-version)
+  - [1. System Architecture](#1-system-architecture)
+  - [2. Getting Started with Docker](#2-getting-started-with-docker)
+  - [3. Running the PrEditR App](#3-running-the-preditr-app)
+  - [4. Accessing PrEditR](#4-accessing-preditr)
+  - [5. Managing PrEditR Containers](#5-managing-preditr-containers)
+  - [6. Using the PrEditR Shiny App](#6-using-the-preditr-shiny-app)
+    - [Main Page: Setting Up Your Run](#main-page-setting-up-your-run)
+      - [General Parameters](#general-parameters)
+      - [Off-Target Search](#off-target-search)
+    - [Defining Your Base Editors](#defining-your-base-editors)
+    - [Defining Your Targets](#defining-your-targets)
+    - [Running the Analysis](#running-the-analysis)
+    - [Stopping and Cleaning Up](#stopping-and-cleaning-up)
+
 ## Command Line Version
 
 *Documentation to be added here.*
