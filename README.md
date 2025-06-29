@@ -25,7 +25,7 @@ PrEditR is packaged in a Docker container for simplified execution on any system
 
 #### Step 1: Install Docker Desktop
 
-If not already installed, download and install Docker Desktop from the official Docker website. It is available for Windows, Mac, and Linux. A system restart is required after installation.
+If not already installed, download and install Docker Desktop from the official [Docker website](https://www.docker.com/products/docker-desktop/). It is available for Windows, Mac, and Linux. A system restart might be required after installation.
 
 #### Step 2: Download the PrEditR Image using Docker Desktop
 
@@ -86,15 +86,6 @@ Replace `<port_number>` with the port specified in the settings (e.g., `http://1
 
 Multiple instances of PrEditR can run simultaneously in different containers. To do this, return to the `Images` tab, click the **Run** button on the PrEditR image again, and assign a different `Host Port` (e.g., `3839`, `3840`) for the new container. Each instance will be listed as a separate entry in the `Containers` tab.
 
-#### Stopping and Cleaning Up
-
-Closing the browser tab does not terminate the container, which continues to run in the background and consume system resources. To shut down the application:
-
-1.  Navigate to the `Containers` tab in Docker Desktop.
-2.  Find the container running the PrEditR instance, identified by the image name and port number.
-3.  Click the **stop button** to halt the application.
-4.  To remove the stopped container, click the **delete button**. This action deletes the container instance, but the pulled image is preserved in the `Images` tab for future use.
-
 ### 6. Using the PrEditR Shiny App
 
 This section describes the parameters and input files required to run an analysis in PrEditR.
@@ -107,9 +98,11 @@ The application's homepage contains several parameters to configure for an analy
 
 * **Organism**: Select the organism (*Human* or *Mouse*) from the dropdown menu.
 * **Job Name**: Provide a unique name for the analysis job, which will be used for naming the output files.
-* **Threads**: Specify the number of processor threads to allocate for the analysis.
-    > **Warning:** For users on Windows, it is recommended to set `Threads` to `1`. The operating system has a known overhead that can cause high RAM consumption, leading to unexpected errors. If a run terminates unexpectedly, the most likely cause is insufficient RAM, and the primary solution is to reduce the thread count.
-* **Operating System**: Select the operating system (*Linux/MacOS* or *Windows*) from the dropdown menu.
+* **Threads**: The threads parameter (default: 1) controls how many guides are designed in parallel. The tool requires a baseline of 4 GB RAM, plus 2–2.5 GB for each additional thread. Running via the Shiny app adds extra memory overhead compared to the command-line interface. For runs with fewer than 50 guides, 1–2 threads should be sufficient. Increase the number of threads only for larger runs if adequate RAM is available.
+    > **Note:** If you're using Docker Desktop, be aware that it may not have access to all of your system's RAM due to default memory limits.
+On *Windows*, you can adjust this limit in the .wslconfig file located at:
+C:/Users/YourUsername/.wslconfig
+If this file doesn't exist, you can create one manually or use the sample provided in this repository. Open the file using the text editor, set the desired RAM limit, save the file to C:/Users/YourUsername/.wslconfig, and restart your computer for the changes to take effect. On *macOS*, open Docker Desktop, go to Settings (or Preferences) > Resources, adjust the Memory slider, and click Apply & Restart to apply the changes.
 
 ##### Off-Target Search
 
@@ -136,8 +129,8 @@ Each row in this file defines one editor. The following columns must be complete
 | **name** | A unique name for the editor, used to link to targets.                                                                                                   | `ABE8e`   |
 | **pam_sequence** | The Protospacer Adjacent Motif (PAM) sequence. Use 'N' for any nucleotide.                                                                               | `NGG`     |
 | **spacer_length** | The length (in nucleotides) of the guide RNA's spacer sequence.                                                                                            | `20`      |
-| **edit_type** | The specific base conversion the editor performs: adenine to guanine (`a2g`) or cytosine to thymine (`c2t`).                                               | `a2g`     |
-| **edit_window_min** | The start of the editing window; the closest position to the PAM (excluding the PAM) where editing can occur. This must be a negative number.           | `-13`     |
+| **edit_type** | The specific base conversion the editor performs: adenine to guanine (`a2g`), cytosine to thymine (`c2t`), thymine to guanine (`t2g`), adenine to cytosine (`a2c`), ...                                               | `a2g`     |
+| **edit_window_min** | The start of the editing window; the closest position to the PAM (excluding the PAM) where editing can occur. This must be a negative number. This assumes that the PAM sequence is located 3' of the editing window.          | `-13`     |
 | **edit_window_max** | The end of the editing window; the furthest position from the PAM where editing can occur. This must also be a negative number.                          | `-17`     |
 
 After populating the template, save it as a CSV file and upload it to PrEditR.
@@ -153,18 +146,18 @@ Each row in this file represents an independent editing task. The columns are de
 | Column Name       | Description                                                                                                                                                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **gene_symbol** | The official symbol for the target gene (e.g., `KRAS`). The `ensembl_id` may be left blank if this is provided.                                                                                       |
-| **ensembl_id** | The Ensembl transcript ID (e.g., `ENST00000256078`). Using a transcript ID is recommended for precision. If only a gene symbol is provided, the tool will report results for the first transcript found containing the target amino acid at the specified position. |
-| **target_aa** | The single-letter code for the target amino acid (e.g., `W` for Tryptophan).                                                                                                                         |
+| **ensembl_id** | The [Ensembl](ensembl.org) transcript ID (e.g., `ENST00000256078`). Using a transcript ID is recommended for isoform precision. If only a gene symbol is provided, the tool will report results for the first transcript found containing the target amino acid at the specified position. > **Note**: Ensembl IDs are typically formatted as <ID>.<version>. Provide only the <ID> portion, excluding the dot and version number.|
+| **target_aa** | The single-letter code for the target amino acid (e.g., `V` for Valine).                                                                                                                         |
 | **target_position** | The numerical position of the target amino acid within the protein sequence.                                                                                                                       |
 | **editor** | The name of the editor for this target. This name must match a `name` from the `editors.csv` file.                                                                                                     |
-| **edit_type** | The type of edit (`a2g` or `c2t`). This must match the `edit_type` defined for the chosen editor in the `editors.csv` file.                                                                            |
+| **edit_type** | The type of edit (`a2g`, `c2t`, ...). This must match the `edit_type` defined for the chosen editor in the `editors.csv` file.                                                                            |
 
 The targets file allows for flexibility:
 
 * Rows can use either Ensembl IDs or gene symbols.
 * Different editors can be specified for different targets within the same run, provided each editor is defined in the editors file.
 
-Once the targets file is ready, save it as a CSV and upload it via the **Upload targets CSV** button.
+Once the targets file is ready, save it as a CSV and upload it using the **Upload targets CSV** button.
 
 #### Running the Analysis
 
@@ -175,3 +168,13 @@ After all parameters are set and files are uploaded:
 3.  Upon completion, a pop-up window will appear:
     * A **success message** indicates that the run finished correctly. Output files will be located in the local directory that was bound as a volume.
     * An **error message** indicates that the run failed. This is commonly caused by insufficient memory (RAM). If this occurs, reduce the number of `Threads` and run the analysis again.
+  
+#### Stopping and Cleaning Up
+
+Closing the browser tab does not terminate the container, which continues to run in the background and consume system resources. To shut down the application:
+
+1.  Navigate to the `Containers` tab in Docker Desktop.
+2.  Find the container running the PrEditR instance, identified by the image name and port number.
+3.  Click the **stop button** to halt the application.
+4.  To remove the stopped container, click the **delete button**. This action deletes the container instance, but the pulled image is preserved in the `Images` tab for future use.
+
