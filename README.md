@@ -1,6 +1,6 @@
 # PrEditR Documentation
 
-This document provides instructions for running PrEditR, either through the command line or the user-friendly Shiny interface.
+This document provides instructions for running PrEditR, either through the command line or the Shiny interface.
 
 ## Command Line Version
 
@@ -35,8 +35,8 @@ A Docker Hub account is not required to download the public PrEditR image.
 2.  In the search bar at the top of the window, enter `fvasquezcastro/preditr` and press Enter.
 3.  From the search results, select the `fvasquezcastro/preditr` image.
 4.  On the right side of the screen is a **Tag** dropdown menu. The correct tag for the system's architecture must be selected:
-    * `v3_amd64` for Intel/AMD systems.
-    * `v3_arm64` for Apple M-series/Snapdragon systems.
+    * `v1.0_amd64` for Intel/AMD systems.
+    * `v1.0_arm64` for Apple M-series/Snapdragon systems.
 5.  Two options are presented: **Pull** and **Run**.
     * **Pull**: Downloads the image to the local machine, where it is stored in the `Images` tab. This action makes the image permanently available for later use.
     * **Run**: Downloads the image and immediately starts the application. If this option is chosen without first pulling, the image is deleted when the Docker session is terminated.
@@ -99,9 +99,10 @@ The application's homepage contains several parameters to configure for an analy
 * **Organism**: Select the organism (*Human* or *Mouse*) from the dropdown menu.
 * **Job Name**: Provide a unique name for the analysis job, which will be used for naming the output files.
 * **Threads**: The threads parameter (default: 1) controls how many guides are designed in parallel. The tool requires a baseline of 4 GB RAM, plus 2–2.5 GB for each additional thread. Running via the Shiny app adds extra memory overhead compared to the command-line interface. For runs with fewer than 50 guides, 1–2 threads should be sufficient. Increase the number of threads only for larger runs if adequate RAM is available.
+  
     > **Note:** If you're using Docker Desktop, be aware that it may not have access to all of your system's RAM due to default memory limits.
 On *Windows*, you can adjust this limit in the .wslconfig file located at:
-C:/Users/YourUsername/.wslconfig
+C:/Users/YourUsername/.wslconfig.
 If this file doesn't exist, you can create one manually or use the sample provided in this repository. Open the file using the text editor, set the desired RAM limit, save the file to C:/Users/YourUsername/.wslconfig, and restart your computer for the changes to take effect. On *macOS*, open Docker Desktop, go to Settings (or Preferences) > Resources, adjust the Memory slider, and click Apply & Restart to apply the changes.
 
 ##### Off-Target Search
@@ -146,7 +147,7 @@ Each row in this file represents an independent editing task. The columns are de
 | Column Name       | Description                                                                                                                                                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **gene_symbol** | The official symbol for the target gene (e.g., `KRAS`). The `ensembl_id` may be left blank if this is provided.                                                                                       |
-| **ensembl_id** | The [Ensembl](ensembl.org) transcript ID (e.g., `ENST00000256078`). Using a transcript ID is recommended for isoform precision. If only a gene symbol is provided, the tool will report results for the first transcript found containing the target amino acid at the specified position. > **Note**: Ensembl IDs are typically formatted as <ID>.<version>. Provide only the <ID> portion, excluding the dot and version number.|
+| **ensembl_id** | The [Ensembl](ensembl.org) transcript ID (e.g., `ENST00000256078`). Using a transcript ID is recommended for isoform precision. If only a gene symbol is provided, the tool will report results for the first transcript found containing the target amino acid at the specified position. > **Note**: Ensembl IDs are typically formatted as ID.version. Provide only the ID portion, excluding the dot and version number.|
 | **target_aa** | The single-letter code for the target amino acid (e.g., `V` for Valine).                                                                                                                         |
 | **target_position** | The numerical position of the target amino acid within the protein sequence.                                                                                                                       |
 | **editor** | The name of the editor for this target. This name must match a `name` from the `editors.csv` file.                                                                                                     |
@@ -154,7 +155,7 @@ Each row in this file represents an independent editing task. The columns are de
 
 The targets file allows for flexibility:
 
-* Rows can use either Ensembl IDs or gene symbols.
+* Rows can use either Ensembl IDs, gene symbols, or both.
 * Different editors can be specified for different targets within the same run, provided each editor is defined in the editors file.
 
 Once the targets file is ready, save it as a CSV and upload it using the **Upload targets CSV** button.
