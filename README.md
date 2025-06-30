@@ -3,6 +3,7 @@
 This document provides instructions for running PrEditR, either through the command line or the Shiny interface.
 
 ## Table of Contents
+- [About PrEditR](#about-preditr)
 - [Command Line Version](#command-line-version)
 - [Shiny App Version](#shiny-app-version)
   - [1. System Architecture](#1-system-architecture)
