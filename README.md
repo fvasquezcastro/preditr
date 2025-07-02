@@ -73,7 +73,6 @@ Each row in this file defines one editor. The following columns must be complete
 | **edit_window_min** | The start of the editing window; the closest position to the PAM (excluding the PAM) where editing can occur. This must be a negative number. This assumes that the PAM sequence is located at 3' of the editing window.          | `-13`     |
 | **edit_window_max** | The end of the editing window; the furthest position from the PAM where editing can occur. This must also be a negative number.                          | `-17`     |
 
-After populating the template, save it as a CSV file and upload it to PrEditR.
 
 #### Defining Your Targets
 
@@ -90,14 +89,12 @@ Each row in this file represents an independent editing task. The columns are de
 | **target_aa** | The single-letter code for the target amino acid (e.g., `V` for Valine).                                                                                                                         |
 | **target_position** | The numerical position of the target amino acid within the protein sequence.                                                                                                                       |
 | **editor** | The name of the editor for this target. This name must match a `name` from the `editors.csv` file.                                                                                                     |
-| **edit_type** | The type of edit (`a2g`, `c2t`, ...). This must match the `edit_type` defined for the chosen editor in the `editors.csv` file.                                                                            |
+| **edit_type** | The type of edit (`a2g`, `c2t`, `c2g`, ...). This must match the `edit_type` defined for the chosen editor in the `editors.csv` file.                                                                            |
 
 The targets file allows for flexibility:
 
 * Rows can use either Ensembl IDs, gene symbols, or both.
 * Different editors can be specified for different targets within the same run, provided each editor is defined in the editors file.
-
-Once the targets file is ready, save it as a CSV and upload it using the **Upload targets CSV** button.
 
 ## Understanding the Output
 
@@ -106,9 +103,7 @@ Once the targets file is ready, save it as a CSV and upload it using the **Uploa
 
 ## Command Line Version
 
-*Documentation to be added here.*
-
----
+Users can pull the PrEditR image from https://hub.docker.com/r/fvasquezcastro/preditr. The parameters required to run PrEditR are explained in the [Understanding the Input](#understanding-the-input) section. Run `/home/PrEditR.R --help` in the Docker image for more details. A template for running the image on an HPC cluster with the SLURM job scheduler is provided in the repository.
 
 ## Shiny App Version
 
