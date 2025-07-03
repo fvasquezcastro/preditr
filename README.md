@@ -60,7 +60,7 @@ This section controls the search for potential off-target sites.
 
 A CSV file defining the properties of the base editors is a required input.
 
-Click the **Download Editors File Template** button to obtain a pre-formatted CSV file. This file can be populated using any spreadsheet software or a text editor.
+An editors template is provided in this repository. Alternatively, click the **Download Editors File Template** button on the Shiny app to obtain a pre-formatted CSV file. This file can be populated using any spreadsheet software or a text editor.
 
 Each row in this file defines one editor. The following columns must be completed:
 
@@ -78,7 +78,7 @@ Each row in this file defines one editor. The following columns must be complete
 
 A CSV file describing the specific genomic targets for editing is also required.
 
-Click the **Download Targets File Template** button to get a correctly formatted file.
+An input template is provided in this repository. Alternatively, click the **Download Targets File Template** button on the Shiny app to get a correctly formatted file.
 
 Each row in this file represents an independent editing task. The columns are described below:
 
@@ -193,10 +193,9 @@ The application's homepage contains several parameters to configure for an analy
 
 #### Running the Analysis
 
-Check [Understanding the Input](#understanding-the-input).
+Check the [Understanding the Input](#understanding-the-input) section.
 
 After all parameters are set and files are uploaded:
-
 
 1.  Click the blue **Run Batch** button.
 2.  An animated progress bar will indicate that the analysis is in progress. The analysis duration depends on the job size.
@@ -213,6 +212,31 @@ Closing the browser tab does not terminate the container, which continues to run
 3.  Click the **stop button** to halt the application.
 4.  To remove the stopped container, click the **delete button**. This action deletes the container instance, but the pulled image is preserved in the `Images` tab for future use.
 
-## Troubleshooting and Reporting Issues
+## Reporting Issues
 
-More stuff here
+If you encounter problems while setting up or running `PrEditR`—including issues with inputs, outputs, or general execution—we encourage you to report them using the **Issues** tab on this repository.
+
+For more complex errors, especially those involving rows labeled as `"Unexpected error"` in the output, please re-run `PrEditR` in debugging mode to help us diagnose the issue more effectively.
+
+### Enabling Debug Mode
+
+#### Command-Line Interface
+
+To enable debug mode in the CLI version, set the environment variable `PREDITR_DEBUG=TRUE` inside the container. You can refer to the provided SLURM template for an example of how to do this.
+
+#### Shiny App
+
+When running the Shiny app:
+
+* Start a new container as usual.
+* Set the port and bind volume as before.
+* **Important**: Do not leave the environment variables section empty.
+* Add a new environment variable:
+    * **Name**: `PREDITR_DEBUG`
+    * **Value**: `TRUE`
+
+Debug mode will generate a stack trace file (`.rds`) in the container’s temporary directory.
+
+### Submitting Error Logs
+
+You can send the resulting `.rds` file to us at [preditr@lji.org](mailto:preditr@lji.org) for further assistance.
