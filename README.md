@@ -22,7 +22,7 @@ This document provides instructions for running PrEditR, either through the comm
       
     - [Running the Analysis](#running-the-analysis)
     - [Stopping and Cleaning Up](#stopping-and-cleaning-up)
-- [Troubleshooting and Reporting Issues](#troubleshooting-and-reporting-issues)
+- [Troubleshooting and Reporting Issues](#reporting-issues)
 
 ## Understanding the Input
 
