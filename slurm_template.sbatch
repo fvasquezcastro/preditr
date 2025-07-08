@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=100g
+#SBATCH --mem=80g
 #SBATCH --output=preditr_%j.out
 #SBATCH --error=preditr_%j.err
 #SBATCH --mail-type=ALL
@@ -20,7 +20,7 @@ OUTPUT_PATH=<OUTPUT_DIR>
 TEMPORARY_PATH=<SCRATCH_DIR>
 
 ORGANISM=<ORGANISM>            # "human" or "mouse"
-THREADS=<NUM_THREADS>          # e.g., 40
+THREADS=<NUM_THREADS>          # e.g., 40 is a good number of threads for 80 GB of RAM
 OFF_TARGETS=<TRUE_OR_FALSE>    # TRUE or FALSE
 
 #Enable debugging?
