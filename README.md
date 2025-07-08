@@ -22,6 +22,7 @@ This document provides instructions for running PrEditR, either through the comm
       
     - [Running the Analysis](#running-the-analysis)
     - [Stopping and Cleaning Up](#stopping-and-cleaning-up)
+- [Limitations](#limitations)
 - [Troubleshooting and Reporting Issues](#reporting-issues)
 
 ## Understanding the Input
@@ -211,6 +212,16 @@ Closing the browser tab does not terminate the container, which continues to run
 2.  Find the container running the PrEditR instance, identified by the image name and port number.
 3.  Click the **stop button** to halt the application.
 4.  To remove the stopped container, click the **delete button**. This action deletes the container instance, but the pulled image is preserved in the `Images` tab for future use.
+
+## Limitations
+
+1. PrEditR assumes that each base editor performs a single type of nucleotide transition (e.g., A>G, C>T, C>G, …). For editors capable of multiple conversion types, a workaround is to define them as separate editor entries—one for each distinct conversion.
+2. RNA base editors are not supported.
+3. PAM sequences are assumed to lie immediately downstream (3') of the protospacer. 
+4. All protospacers designed in a single run must be of the same length. While PrEditR supports variable protospacer lengths in general, mixed-length designs cannot be combined in a single execution.
+5. PrEditR assumes uniform editing efficiency across all positions within the defined editing window; position-specific editing probabilities (i.e., weighted editing windows) are currently not supported.
+6. While the command-line version uses forking for child processes—speeding up processing and reducing RAM usage—the Shiny app relies on multisession mode, which significantly increases memory consumption and leads to slower performance.
+
 
 ## Reporting Issues
 
