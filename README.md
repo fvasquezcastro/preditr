@@ -20,7 +20,6 @@
   - [5. Managing PrEditR Containers](#5-managing-preditr-containers)
   - [6. Using the PrEditR Shiny App](#6-using-the-preditr-shiny-app)
     - [Setting Up Your Run](#setting-up-your-run)
-      
     - [Running the Analysis](#running-the-analysis)
     - [Stopping and Cleaning Up](#stopping-and-cleaning-up)
 - [Limitations](#limitations)
