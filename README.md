@@ -281,4 +281,4 @@ Debug mode will generate a stack trace file (`.rds`) in the container’s tempor
 
 ### Submitting Error Logs
 
-You can send the resulting `.rda` file to us at [preditr@lji.org](mailto:preditr@lji.org) for further assistance.
+You can send the resulting `.rds` file to us at [preditr@lji.org](mailto:preditr@lji.org) for further assistance.
