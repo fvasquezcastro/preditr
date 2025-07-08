@@ -1,4 +1,4 @@
-# PrEditR
+# PrEditR Documentation
 
 ![main_fig](main_fig.png)
 
