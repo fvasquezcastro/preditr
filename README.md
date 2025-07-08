@@ -277,8 +277,8 @@ When running the Shiny app:
     * **Name**: `PREDITR_DEBUG`
     * **Value**: `TRUE`
 
-Debug mode will generate a stack trace file (`.rds`) in the container’s temporary directory.
+Debug mode will generate a stack trace file (`.rda`) in the container’s temporary directory.
 
 ### Submitting Error Logs
 
-You can send the resulting `.rds` file to us at [preditr@lji.org](mailto:preditr@lji.org) for further assistance.
+You can send the resulting `.rda` file to us at [preditr@lji.org](mailto:preditr@lji.org) for further assistance.
