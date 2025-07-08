@@ -5,6 +5,9 @@
 - [Understanding the Input](#understanding-the-input)
   - [General Parameters](#general-parameters)
   - [Off-Target Search Parameters](#off-target-search)
+      - [Command Line Exclusive Parameters](#off-target-search-command-line-exclusive-parameterss)
+      - [Shiny App Exclusive Parameters](#off-target-search-shiny-app-exclusive-parameterss)
+      - [Download Indexed Genomes](#download-indexed-genomes)
   - [Defining Your Base Editors](#defining-your-base-editors)
   - [Defining Your Targets](#defining-your-targets)     
 - [Understanding the Output](#understanding-the-output)
@@ -56,10 +59,18 @@ This section controls the search for potential off-target sites.
 * **--off_targets** [OPTIONAL] (boolean; default: FALSE): Select `TRUE` to enable the search, or `FALSE` to disable it.
 * **--n_mismatches** [OPTIONAL] (int; default: `3`): Instructs the tool to search for off-target sites with up to this number of differences from the guide's spacer sequence. A value of `3` will find off-targets with 0, 1, 2, and 3 mismatches.
 * **--n_max_alignments** (int; default: `10`): Filters out promiscuous guides. Any designed guide with a number of perfect, zero-mismatch alignments to the genome greater than or equal to this value will be discarded.
+
+###### Off-Target Search Command Line Exclusive Parameters
 * **--indexed_genome** [REQUIRED IF OFF-TARGET SEARCH ON]: Path to the directory that contains the indexed genome files (in `.ebwt` format). NOTE: this is different for the Shiny app. See below.
 
+###### Off-Target Search Shiny App Exclusive Parameters
 * **Indexed Genome Directory**: This field is mandatory if `Perform Off-Target Search` is `TRUE`. The value must be the name of the subfolder (located within the directory mounted to `/data`) that contains the indexed genome files (in `.ebwt` format).
     > For example, if the host path `C:\Users\YourUser\PrEditR_IO` is mounted to `/data`, and the indexed genome is located in `C:\Users\YourUser\PrEditR_IO\hg38_index`, the value for this field should be `hg38_index`.
+
+###### Download Indexed Genomes
+The human indexed genome (hg38) is available for download [here](https://drive.google.com/file/d/14BxsBbPZK4ugSJ5dDBN04Y35I4KSULoz/view?usp=drive_link).
+The mouse indexed genome (mm10) is available for download [here](https://drive.google.com/file/d/1KDcW5p5pOZIENVO0Pvurec4rijsCDPmp/view?usp=drive_link).
+Alternatively, users can prepare their own indexed genomes using Bowtie (version 1). 
 
 #### Defining Your Base Editors
 
