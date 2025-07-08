@@ -24,7 +24,7 @@ THREADS=<NUM_THREADS>          # e.g., 40
 OFF_TARGETS=<TRUE_OR_FALSE>    # TRUE or FALSE
 
 #Enable debugging?
-DEBUG_MODE=FALSE               # TRUE or FALSE. It is recommended to leave on FALSE unless needed (refer to the documentation section on Troubleshooting and Debugging)
+DEBUG_MODE=FALSE               # TRUE or FALSE. It is recommended to leave on FALSE unless needed (refer to the documentation section on Troubleshooting and Reporting Issues).
 
 #Do NOT modify the BIND_PATHS variable
 BIND_PATHS="${INPUT_PATH}:${INPUT_PATH},${EDITOR_PATH}:${EDITOR_PATH},${INDEXED_GENOME_PATH}:${INDEXED_GENOME_PATH},${OUTPUT_PATH}:${OUTPUT_PATH},${TEMPORARY_PATH}:${TEMPORARY_PATH}"
