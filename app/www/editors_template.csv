@@ -1,0 +1,8 @@
+editor_name,pam,spacer_length,edit_type,edit_window_min,edit_window_max,addgene_optional,reference_optional
+ABE8e-SpCas9,NGG,20,a2g,-13,-17,https://www.addgene.org/138489/,https://doi.org/10.1038/s41587-020-0453-z
+ABE8e-nCas9-SpG-HA,NGN,20,a2g,-13,-17,https://www.addgene.org/231109/,https://doi.org/10.1101/2024.11.12.622254
+TadA-CDd-nCas9-SpG-UGI-HA,NGN,20,c2t,-13,-17,https://www.addgene.org/231111/,https://doi.org/10.1101/2024.11.12.622254
+TadA-CDd-nCas9-SpG-UGI,NGN,20,c2t,-13,-17,https://www.addgene.org/231110/,https://doi.org/10.1101/2024.11.12.622254
+TadCBEd-SaCas9,NNGRRT,20,c2t,-13,-17,https://www.addgene.org/193845/,https://doi.org/10.1038/s41587-022-01533-6
+eNme2-C-TadCBEd,NNNNCN,20,c2t,-13,-17,https://www.addgene.org/193841/,https://doi.org/10.1038/s41587-022-01533-6
+TadCBEd-SpCas9,NGG,20,c2t,-13,-17,https://www.addgene.org/193835/,https://doi.org/10.1038/s41587-022-01533-6
