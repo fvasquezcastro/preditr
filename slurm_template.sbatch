@@ -23,17 +23,49 @@ ORGANISM=<ORGANISM>            # "human" or "mouse"
 THREADS=<NUM_THREADS>          # e.g., 40
 OFF_TARGETS=<TRUE_OR_FALSE>    # TRUE or FALSE
 
+#Enable debugging?
+DEBUG_MODE=FALSE               # TRUE or FALSE. It is recommended to leave on FALSE unless needed (refer to the documentation section on Troubleshooting and Debugging)
+
+#Do NOT modify the BIND_PATHS variable
+BIND_PATHS="${INPUT_PATH}:${INPUT_PATH},${EDITOR_PATH}:${EDITOR_PATH},${INDEXED_GENOME_PATH}:${INDEXED_GENOME_PATH},${OUTPUT_PATH}:${OUTPUT_PATH},${TEMPORARY_PATH}:${TEMPORARY_PATH}"
+
 # ==========================
-# Execute Singularity container
+# Execute as a Singularity container
 # ==========================
-singularity exec --no-home --bind $INPUT_PATH:$INPUT_PATH,$EDITOR_PATH:$EDITOR_PATH,$INDEXED_GENOME_PATH:$INDEXED_GENOME_PATH,$OUTPUT_PATH:$OUTPUT_PATH,$TEMPORARY_PATH:$TEMPORARY_PATH \
+
+singularity exec \
+--no-home \
+--env PREDITR_DEBUG="$DEBUG_MODE" \
+--bind "$BIND_PATHS" \
 $IMAGE_PATH /home/PrEditR.R \
-    --job_name $JOB_NAME \
-    --input $INPUT_PATH \
-    --output $OUTPUT_PATH \
-    --editors $EDITOR_PATH \
-    --off_targets $OFF_TARGETS \
-    --indexed_genome $INDEXED_GENOME_PATH \
-    --organism $ORGANISM \
-    --threads $THREADS \
-    --tmp $TEMPORARY_PATH
+    --job_name "$JOB_NAME" \
+    --input "$INPUT_PATH"  \
+    --output "$OUTPUT_PATH" \
+    --editors "$EDITOR_PATH" \
+    --off_targets "$OFF_TARGETS" \
+    --indexed_genome "$INDEXED_GENOME_PATH" \
+    --organism "$ORGANISM" \
+    --threads "$THREADS" \
+    --tmp "$TEMPORARY_PATH"
+
+# ==========================
+# Execute as a Docker container
+# ==========================
+
+# Convert comma-separated BIND_PATHS into multiple -v flags
+#DOCKER_BINDS=$(echo "$BIND_PATHS" | tr ',' '\n' | awk '{print "-v " $1}')
+
+#docker run --rm \
+#$DOCKER_BINDS \
+#-e PREDITR_DEBUG="$DEBUG_MODE" \
+#$IMAGE_PATH \
+#/home/PrEditR.R \
+#    --job_name "$JOB_NAME" \
+#    --input "$INPUT_PATH"  \
+#    --output "$OUTPUT_PATH" \
+#    --editors "$EDITOR_PATH" \
+#    --off_targets "$OFF_TARGETS" \
+#    --indexed_genome "$INDEXED_GENOME_PATH" \
+#    --organism "$ORGANISM" \
+#    --threads "$THREADS" \
+#    --tmp "$TEMPORARY_PATH"
