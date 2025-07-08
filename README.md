@@ -111,11 +111,11 @@ PrEditR appends the following columns to the input:
 | `protospacer_seq` | The sequence of the protospacer, which is the specific DNA sequence that the guide RNA is designed to bind to. |
 | `percent_gc` | The percentage of Guanine (G) and Cytosine (C) bases within the protospacer sequence. GC-content can influence the stability of the guide RNA-DNA interaction. |
 | `protospacer_strand` | The strand of the DNA (**+** or **-**) that the protospacer sequence is on. |
-| `pam_seq` | The Protospacer Adjacent Motif (PAM) sequence.. |
+| `pam_seq` | The Protospacer Adjacent Motif (PAM) sequence. |
 | `chromosome` | The chromosome where the target sequence is located. |
 | `pam_coordinates` | The specific genomic coordinates of the PAM sequence. |
 | `mutation_type` | The classification of the intended mutation (e.g., missense, nonsense, silent). |
-| `wildtype_sequence` | Shows the original **wildtype** amino acid sequence, including 7 amino acids on each side of the edit site. The specific amino acids targeted for editing within the "edit window" are clearly identified by vertical bars `|`. |
+| `wildtype_sequence` | Shows the original **wildtype** amino acid sequence, including 7 amino acids on each side of the edit site. The specific amino acids targeted for editing within the "edit window" are clearly identified by vertical bars. |
 | `mutant_sequence` | Shows the resulting **mutant** amino acid sequence after the intended edit, also displaying the +/- 7 flanking amino acids for context. |
 | `edit` | A concise summary of the amino acid change. For example, **S45P** signifies that the amino acid Serine (S) at position 45 is changed to Proline (P). |
 | `Restriction Enzymes` | This column checks for the presence of recognition sites for a set of common restriction enzymes (**EcoRI, KpnI, BsmBI, BsaI, BbsI, PacI, MluI**) within the guide sequence. |
