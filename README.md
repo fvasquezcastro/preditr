@@ -1,6 +1,6 @@
-# PrEditR Documentation
+# PrEditR
 
-This document provides instructions for running PrEditR, either through the command line or the Shiny interface.
+![main_fig](main_fig.png)
 
 ## Table of Contents
 - [About PrEditR](#about-preditr)
