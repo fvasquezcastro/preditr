@@ -1,7 +1,5 @@
 # PrEditR Documentation
 
-![main_fig](main_fig.png)
-
 ## Table of Contents
 - [About PrEditR](#about-preditr)
 - [Understanding the Input](#understanding-the-input)
@@ -26,6 +24,9 @@
 - [Troubleshooting and Reporting Issues](#reporting-issues)
 
 ## About PrEditR
+
+![main_fig](main_fig.png)
+
 PrEditR was developed by the [Myers Lab](https://www.samyerslab.org) at La Jolla Institute for Immunology to support CRISPR sgRNA design using custom base editors. Originally created to streamline large-scale sgRNA design for protein post-translational modifications (PTMs) functional screens, PrEditR is a user-friendly tool for protein-centric base editing applications.
 
 ## Understanding the Input
