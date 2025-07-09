@@ -136,6 +136,7 @@ PrEditR appends the following columns to the input:
 ## Command Line Version
 
 Users can pull the PrEditR image from https://hub.docker.com/r/fvasquezcastro/preditr. The parameters required to run PrEditR are explained in the [Understanding the Input](#understanding-the-input) section. Run `/home/PrEditR.R --help` in the Docker image for more details. A template for running the image on an HPC cluster with the SLURM job scheduler is provided in the repository.
+**Note:** PrEditR is available for both amd64 and arm64 architectures. Ensure that you download a version that is compatible with your system. 
 
 ## Shiny App Version
 
