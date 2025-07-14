@@ -27,7 +27,7 @@
 
 ## About PrEditR
 
-![main_fig](main_fig.png)
+![main_fig](main_fig.tiff)
 
 PrEditR was developed by the [Myers Lab](https://www.samyerslab.org) at [La Jolla Institute for Immunology](https://www.lji.org) to support CRISPR sgRNA design using custom base editors. Originally created to streamline large-scale sgRNA design for protein post-translational modifications (PTMs) functional screens, PrEditR is a user-friendly tool for protein-centric base editing applications.
 
@@ -132,7 +132,6 @@ PrEditR appends the following columns to the input:
 | `Off-Target Alignments` | This group of columns (`alignments_n0`, `alignments_n1`, `alignments_n2`, `alignments_n3`, etc.) quantifies the guide's specificity. Each column lists the total number of sites in the genome where the guide sequence aligns with a specific number of mismatches (e.g., `alignments_n0` is the count of perfect matches, `alignments_n1` is the count of sites with one mismatch, and so on). |
 
 
-
 ## Command Line Version
 
 Users can pull the PrEditR image from https://hub.docker.com/r/fvasquezcastro/preditr. The parameters required to run PrEditR are explained in the [Understanding the Input](#understanding-the-input) section. Run `/home/PrEditR.R --help` in the Docker image for more details. A template for running the image on an HPC cluster with the SLURM job scheduler is provided in the repository.
@@ -235,6 +234,8 @@ After all parameters are set and files are uploaded:
 3.  Upon completion, a pop-up window will appear:
     * A **success message** indicates that the run finished correctly. Output files will be located in the local directory that was bound as a volume.
     * An **error message** indicates that the run failed. This is commonly caused by insufficient memory (RAM). If this occurs, reduce the number of `Threads` and run the analysis again.
+  
+**IMPORTANT:** PrEditR takes a while loading resources but once the run started, it progresses rapidly. To maximize efficiency, batch your sgRNA designs into as few runs as possible. 
   
 #### Stopping and Cleaning Up
 
