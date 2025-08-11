@@ -1,6 +1,9 @@
 generatePartialOutput <- function(row_num, candidate_guides, genome, target_position,
                                   cds_coordinates, strand, editor, edit_type, gene_symbol, 
                                   ensembl_id, flags){
+
+  #Have to take notes of the guides that were skipped to not export them in the partial guideset
+  excluded_guides <- c()
   
   if (!is.null(candidate_guides)){
     
@@ -85,8 +88,7 @@ generatePartialOutput <- function(row_num, candidate_guides, genome, target_posi
     }
     
     
-    #Have to take notes of the guides that were skipped to not export them in the partial guideset
-    excluded_guides <- c()
+
     for (i in 1:length(candidate_guides)){
     
       if (!is.null(alleles)){
