@@ -1,0 +1,4 @@
+gene_symbol,ensembl_id,target_aa,target_position,editor,edit_type
+STAT3,ENST00000264657,Y,480,ABE8e-SpCas9,a2g
+,ENST00000262719,V,729,ABE8e-SpCas9,a2g
+JAK3,,E,371,ABE8e-SpCas9,a2g
