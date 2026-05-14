@@ -161,7 +161,7 @@ Identify your chip architecture to download the correct Docker image:
 ### 4. Accessing PrEditR
 Open a browser and navigate to: `http://127.0.0.1:3838`.
 
-### 6. Using the PrEditR Shiny App
+### 5. Using the PrEditR Shiny App
 * **Run Analysis**: Upload your files and click **Run Batch**.
 * **Success/Error**: Check the status pop-up. If an error occurs, it is often due to insufficient RAM; try reducing the number of `Threads`.
 * **Cleanup**: Stop and delete the container in the `Containers` tab when finished to free system resources.
