@@ -153,8 +153,8 @@ Identify your chip architecture to download the correct Docker image:
 ### 3. Running the PrEditR App
 1. **Launch**: In the `Images` tab, click **Run** next to the PrEditR image.
 2. **Ports**: In `Optional settings`, assign a `Host Port` (e.g., `3838`).
-3. **Volumes**: 
-    * `Host Path`: Select your local folder for saving results.
+3. **Volumes** *(only required for off-target searches)*: If you plan to use the off-target search feature, bind a folder containing your indexed genome files:
+    * `Host Path`: Select the local folder containing your indexed genome.
     * `Container Path`: Must be set to `/data`.
 4. **Start**: Click the blue **Run** button.
 
