@@ -73,11 +73,18 @@ runPrEditR <- function(
     off_targets,
     non_editing_controls,
     tmp,
+    references_path = NULL,
     debug = FALSE,
     progressor = NULL){
-  
+
   gc()
   loadSetupLibraries()
+
+  # Make an explicit references path (CLI --references_path) visible to the map
+  # helpers and to parallel workers, which resolve it from this env var.
+  if (!is.null(references_path) && nzchar(references_path)) {
+    Sys.setenv(PREDITR_REFERENCES_PATH = references_path)
+  }
   
   if (shiny){
     # Recursive futures are now enabled globally in server.R
@@ -206,44 +213,41 @@ runPrEditR <- function(
   #Flag those that are known to have multiple isoforms
   df$isoforms <- flagIsoforms(organism, df$uniprot_id)
   
-  #Genome:
-  if (organism == "human") {
-    genome_pkg <- "BSgenome.Hsapiens.UCSC.hg38"
-    #library(BSgenome.Hsapiens.UCSC.hg38)
-    utils::data("txdb_human", package="crisprDesignData", envir = environment())
-    #flat_granges <- unlist(txdb_human) #Will be filtered down later
-    
-    small_txdb <- list(
-      exons = txdb_human$exons[txdb_human$exons$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      cds = txdb_human$cds[txdb_human$cds$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      transcripts = txdb_human$transcripts[txdb_human$transcripts$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      fiveUTRs = txdb_human$fiveUTRs[txdb_human$fiveUTRs$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      threeUTRs = txdb_human$threeUTRs[txdb_human$threeUTRs$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      introns = txdb_human$introns[txdb_human$introns$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      tss = txdb_human$tss[txdb_human$tss$tx_id %in% unique(merged_mapped_ensembl_ids)]
-    )
-    
-    small_txdb <- GenomicRanges::GRangesList(small_txdb, compress=TRUE)
-    rm(txdb_human, envir = environment())
+  #Genome + annotation, resolved from the Docker reference-image model
+  #(scan PREDITR_REFERENCES_PATH/<organism>). Falls back to the legacy baked-in
+  #crisprDesignData objects while references are being migrated; the fallback
+  #disappears naturally once the hard-cut image ships without them.
+  organism_ref <- tryCatch(
+    loadReference(organism, references_path),
+    error = function(e) {
+      ParallelLogger::logInfo(paste0(
+        "Reference resolver unavailable (", conditionMessage(e),
+        "); falling back to baked-in ", organism, " data."))
+      loadOrganismData(organism)
+    }
+  )
+  full_txdb <- organism_ref$txdb
+  genome_pkg <- if (!is.null(organism_ref$manifest) && !is.null(organism_ref$manifest$genome_package)) {
+    organism_ref$manifest$genome_package
+  } else if (organism == "human") {
+    "BSgenome.Hsapiens.UCSC.hg38"
   } else {
-    genome_pkg <- "BSgenome.Mmusculus.UCSC.mm10"
-    #library(BSgenome.Mmusculus.UCSC.mm10)
-    utils::data("txdb_mouse", package="crisprDesignData", envir = environment())
-    #flat_granges <- unlist(txdb_mouse) #Will be filtered down later
-    
-    small_txdb <- list(
-      exons = txdb_mouse$exons[txdb_mouse$exons$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      cds = txdb_mouse$cds[txdb_mouse$cds$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      transcripts = txdb_mouse$transcripts[txdb_mouse$transcripts$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      fiveUTRs = txdb_mouse$fiveUTRs[txdb_mouse$fiveUTRs$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      threeUTRs = txdb_mouse$threeUTRs[txdb_mouse$threeUTRs$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      introns = txdb_mouse$introns[txdb_mouse$introns$tx_id %in% unique(merged_mapped_ensembl_ids)],
-      tss = txdb_mouse$tss[txdb_mouse$tss$tx_id %in% unique(merged_mapped_ensembl_ids)]
-    )
-    
-    small_txdb <- GenomicRanges::GRangesList(small_txdb, compress=TRUE)
-    rm(txdb_mouse, envir = environment())
+    "BSgenome.Mmusculus.UCSC.mm10"
   }
+
+  #Filter the full annotation down to the transcripts in this job (organism-agnostic).
+  keep_tx <- unique(merged_mapped_ensembl_ids)
+  small_txdb <- list(
+    exons       = full_txdb$exons[full_txdb$exons$tx_id %in% keep_tx],
+    cds         = full_txdb$cds[full_txdb$cds$tx_id %in% keep_tx],
+    transcripts = full_txdb$transcripts[full_txdb$transcripts$tx_id %in% keep_tx],
+    fiveUTRs    = full_txdb$fiveUTRs[full_txdb$fiveUTRs$tx_id %in% keep_tx],
+    threeUTRs   = full_txdb$threeUTRs[full_txdb$threeUTRs$tx_id %in% keep_tx],
+    introns     = full_txdb$introns[full_txdb$introns$tx_id %in% keep_tx],
+    tss         = full_txdb$tss[full_txdb$tss$tx_id %in% keep_tx]
+  )
+  small_txdb <- GenomicRanges::GRangesList(small_txdb, compress=TRUE)
+  rm(full_txdb, organism_ref)
   
   rm(trimmed_ensembl_ids, uniprot2ensembl_ids, ensembl2uniprot_ids, 
      mapped_ensembl_ids, mapped_uniprot_ids, merged_mapped_ensembl_ids, 
@@ -286,10 +290,12 @@ runPrEditR <- function(
     "findOffTargets", "findPotentialLocus", "findRegionsOfInterest", 
     "findRelativeTargetBasePosition", "flagGuides", "generateEditedCodons", 
     "generateErrorOutput", "generateOutput", "generatePartialOutput", 
-    "generatePrettyTable", "generateWindowSequences", "getCodingSequences", 
-    "getWindowSeqs2","isNEC", "loadEditors", "loadFunctions", "loadLibraries", 
-    "loadOrganismData", "mapEnsembl2MGI", "mapEnsembl2Uniprot", 
-    "mapUniprot2Ensembl", "parseArguments", "process_row", 
+    "generatePrettyTable", "generateWindowSequences", "getCodingSequences",
+    "getWindowSeqs2","isNEC", "loadEditors", "loadFunctions", "loadLibraries",
+    "loadOrganismData", "loadReference", "discoverReferences",
+    "readReferenceManifest", "assertBiocCompatible", "referencesBasePath",
+    "referenceMapsDir", "mapEnsembl2MGI", "mapEnsembl2Uniprot",
+    "mapUniprot2Ensembl", "parseArguments", "process_row",
     "scoreGuides", "spansIntron", "summarizeEdits", "summaryPlots", 
     "trimEnsembl", "worker_fun", "progressor"
   )
@@ -346,7 +352,10 @@ runPrEditR <- function(
       }
       if (shiny) {
         suppressMessages(
-          organism_data <- loadOrganismData(organism)
+          organism_data <- tryCatch(
+            loadReference(organism, references_path),
+            error = function(e) loadOrganismData(organism)
+          )
         )
         genome <- organism_data$genome
         txdb   <- organism_data$txdb
@@ -432,7 +441,22 @@ if (identical(Sys.getenv("PREDITR_MODE"), "CLI")) {
   if (!requireNamespace("argparser", quietly = TRUE)) stop("argparser required")
   
   args <- parseArguments()
-  
+
+  # --list_organisms: report what is installed under the references path and exit.
+  if (isTRUE(args$list_organisms)) {
+    refs <- discoverReferences(if (nzchar(args$references_path)) args$references_path else NULL)
+    if (nrow(refs) == 0) {
+      cat("No references installed. Sync a preditr-ref image first.\n")
+    } else {
+      cat("Available organisms:\n")
+      for (i in seq_len(nrow(refs))) {
+        cat(sprintf("  %-12s %s (Bioconductor %s)\n",
+                    refs$organism_id[i], refs$genome_build[i], refs$bioconductor_version[i]))
+      }
+    }
+    quit(save = "no", status = 0)
+  }
+
   exit_code <- runPrEditR(
     input_file     = args$input,
     job_name       = args$job_name,
@@ -449,6 +473,7 @@ if (identical(Sys.getenv("PREDITR_MODE"), "CLI")) {
     off_targets    = as.logical(args$off_targets),
     non_editing_controls = as.logical(args$non_editing_controls),
     tmp            = args$tmp,
+    references_path = if (nzchar(args$references_path)) args$references_path else NULL,
     debug          = (Sys.getenv("PREDITR_DEBUG") == "TRUE")
   )
   

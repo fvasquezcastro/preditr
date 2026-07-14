@@ -1,6 +1,14 @@
-# Keep the AlphaFold pLDDT maps out of the app image (preditr.dockerfile: COPY . /app).
-# pLDDT is large and organism-specific; it ships in the per-organism reference images instead
-# (references/build_reference_image.sh copies maps/<organism>/ through its own build context,
-# which this file does not affect). The app reads it at runtime from PREDITR_REFERENCES_PATH.
-# See references/docs/compose-reference-images.md.
-maps/**/plddt.rds
+# App image (preditr.dockerfile: COPY . /app) should carry only the running app.
+# Genome/annotation/maps ship in the per-organism preditr-ref images and are read
+# at runtime from PREDITR_REFERENCES_PATH; build/deploy tooling is not needed in
+# the app image. See references/docs/compose-reference-images.md.
+#
+# NOTE: the reference-image build (references/build_reference_image.sh) uses its
+# own temp build context, so it is unaffected by this file and still ships maps/.
+
+maps/
+references/
+run/
+.git/
+.claude/
+**/.DS_Store

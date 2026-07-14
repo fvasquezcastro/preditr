@@ -102,7 +102,7 @@ The directory should include:
 
 `preditr_reference.json` is the stable discovery file used by the Shiny app.
 
-The build also copies the repo's `maps/<organism_id>/` directory into the reference directory as `maps/`, so ID maps and the AlphaFold `plddt.rds` travel with the organism reference. `plddt.rds` is large and organism-specific, so it is excluded from the app image (`.dockerignore`) and lives only here; the app reads it at runtime from `<PREDITR_REFERENCES_PATH>/<organism>/maps/plddt.rds` (see `functions/lookupPLDDT.R`), falling back to the repo's `maps/<organism>/plddt.rds` for host CLI / local development. BLOSUM62 is organism-independent and comes from the Biostrings package in the app image, so it is not shipped per organism.
+The build also copies the repo's `maps/<organism_id>/` directory into the reference directory as `maps/`, so ID maps and the AlphaFold `plddt.rds` travel with the organism reference. `plddt.rds` is large and organism-specific, so it is excluded from the app image (`.dockerignore`) and lives only here; the app reads it at runtime from `<PREDITR_REFERENCES_PATH>/<organism>/maps/plddt.rds` (see `functions/lookupPLDDT.R`), falling back to the repo's `maps/<organism>/plddt.rds` for host CLI / local development. BLOSUM62 is organism-independent and comes from the `pwalign` package in the app image (the substitution matrices moved there from Biostrings in Bioconductor 3.19), so it is not shipped per organism.
 
 Example:
 

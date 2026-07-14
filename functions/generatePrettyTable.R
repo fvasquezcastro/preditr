@@ -27,7 +27,7 @@ generatePrettyTable <- function(results_df, organism, job_name, output_folder){
     )
   } else {
     # Map Ensembl IDs to MGI IDs
-    mgi_ids <- mapEnsembl2MGI(results_df$ensembl_id)
+    mgi_ids <- mapEnsembl2MGI(results_df$ensembl_id, organism)
     
     # Create the MGI link only if a valid ID was found
     results_df$gene_symbol <- vapply(

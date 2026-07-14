@@ -1,8 +1,8 @@
-mapEnsembl2MGI <- function(ensembl_idx){
-  
+mapEnsembl2MGI <- function(ensembl_idx, organism = "mouse"){
+
   ensembl_idx <- ifelse(ensembl_idx == "", NA, ensembl_idx) #Prevents errors during mapping
-  
-  map_env <- readRDS(file.path("maps", "mouse", "ensembl_to_mgi.rds"))
+
+  map_env <- readRDS(file.path(referenceMapsDir(organism), "ensembl_to_mgi.rds"))
   
   #Define helper functions
   

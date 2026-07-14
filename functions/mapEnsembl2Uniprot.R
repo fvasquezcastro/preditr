@@ -5,7 +5,7 @@ mapEnsembl2Uniprot <- function(organism, ensembl_idx) {
   # Normalize input
   ensembl_idx <- ifelse(is.na(ensembl_idx) | ensembl_idx == "", NA_character_, ensembl_idx)
   
-  map_env <- readRDS(file.path("maps", organism, "ensembl_to_uniprot.rds"))
+  map_env <- readRDS(file.path(referenceMapsDir(organism), "ensembl_to_uniprot.rds"))
   
   `%||%` <- function(x, y) if (is.null(x)) y else x
   

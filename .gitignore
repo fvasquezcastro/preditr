@@ -1,2 +1,7 @@
 CLAUDE.md
 local/
+.claude/
+
+# Compose runtime dirs (created by run/*.sh; hold user inputs, results, tmp)
+run/preditr_inputs/
+run/preditr_outputs/

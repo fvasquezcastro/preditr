@@ -2,7 +2,7 @@ flagIsoforms <- function(organism, uniprot_idx){
     
     ParallelLogger::logInfo("Checking for isoforms...")
     
-    env <- readRDS(file.path("maps", organism, "has_isoforms.rds"))
+    env <- readRDS(file.path(referenceMapsDir(organism), "has_isoforms.rds"))
     
     unique_ids <- unique(uniprot_idx)
     unique_ids <- unique_ids[!is.na(unique_ids) & unique_ids != ""]

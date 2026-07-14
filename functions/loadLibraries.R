@@ -24,11 +24,10 @@ loadSetupLibraries <- function() {
 # 2. Worker Packages: Character vector to be passed to furrr_options
 # We do NOT use library() here. This keeps the parent RAM clean.
 process_pkgs <- c(
-  "crisprBase", 
+  "crisprBase",
   "crisprDesign",
-  "crisprDesignData", 
   "GenomicFeatures",
-  "Biostrings", 
+  "Biostrings",
   "tryCatchLog"
 )
 

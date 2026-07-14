@@ -7,7 +7,7 @@ docker buildx build \
   --platform linux/amd64 \
   --build-arg TARGETPLATFORM=linux/amd64 \
   -f preditr.dockerfile \
-  -t fvasquezcastro/preditr:v26_amd64 \
+  -t fvasquezcastro/preditr:1.8.0_amd64 \
   --provenance=false \
   --push \
   .

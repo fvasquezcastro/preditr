@@ -27,12 +27,15 @@ install.packages("dplyr")
 
 BiocManager::install("GenomicFeatures", ask = FALSE, update = FALSE)
 BiocManager::install("Biostrings", ask = FALSE, update = FALSE)
+BiocManager::install("pwalign", ask = FALSE, update = FALSE)  # BLOSUM62 moved here from Biostrings in Bioc 3.19
 BiocManager::install("crisprBase", ask = FALSE, update = FALSE)
 BiocManager::install("crisprDesign", ask = FALSE, update = FALSE)
 BiocManager::install("AnnotationHub", ask = FALSE, update = FALSE)
 
-install.packages("devtools")
-devtools::install_github("crisprVerse/crisprDesignData", upgrade = "never")
+# Genome (BSgenome) and annotation (crisprDesignData) data are no longer baked in.
+# They ship per-organism in the preditr-ref images and are loaded at runtime from
+# PREDITR_REFERENCES_PATH by functions/loadReference.R. See
+# references/docs/compose-reference-images.md.
 
 install.packages("shiny")
 install.packages("bslib")
@@ -41,6 +44,3 @@ install.packages("readr")
 install.packages("shinyjs")
 install.packages("shinybusy")
 install.packages("ggplot2")
-
-BiocManager::install("BSgenome.Hsapiens.UCSC.hg38", ask = FALSE, update = FALSE)
-BiocManager::install("BSgenome.Mmusculus.UCSC.mm10", ask = FALSE, update = FALSE)

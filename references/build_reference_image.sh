@@ -10,7 +10,7 @@ Usage:
     --organism human \
     --label "Human" \
     --genome-build GRCh38 \
-    --image fvasquezcastro/preditr-ref-human:grch38-bioc3.19-v1 \
+    --image fvasquezcastro/preditr-ref:human-grch38 \
     --genome-package BSgenome.Hsapiens.UCSC.hg38 \
     --annotation-package TxDb.Hsapiens.UCSC.hg38.knownGene \
     --annotation-object TxDb.Hsapiens.UCSC.hg38.knownGene \
@@ -37,6 +37,8 @@ Options:
   --annotation-rds-path VALUE  Runtime RDS path under the reference directory. Default: annotation/txdb.rds.
   --package VALUE              Bioconductor package to install. Repeatable.
   --cran-package VALUE         CRAN package to install. Repeatable.
+  --github-package VALUE       GitHub package (owner/repo) installed at build time,
+                               e.g. crisprVerse/crisprDesignData. Repeatable.
   --context VALUE              Docker context name. Default: default.
   --push                       Push the built image.
   --no-cache                   Build without cache.
@@ -73,6 +75,7 @@ NO_CACHE="false"
 DRY_RUN="false"
 PACKAGES=()
 CRAN_PACKAGES=()
+GITHUB_PACKAGES=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -134,6 +137,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --cran-package)
       CRAN_PACKAGES+=("$2")
+      shift 2
+      ;;
+    --github-package)
+      GITHUB_PACKAGES+=("$2")
       shift 2
       ;;
     --context)
@@ -228,6 +235,11 @@ trap cleanup EXIT
 DOCKERFILE="${BUILD_DIR}/Dockerfile"
 PACKAGES_R="$(package_r_vector "${PACKAGES[@]}")"
 CRAN_PACKAGES_R="$(package_r_vector "${CRAN_PACKAGES[@]}")"
+if [[ "${#GITHUB_PACKAGES[@]}" -gt 0 ]]; then
+  GITHUB_PACKAGES_R="$(package_r_vector "${GITHUB_PACKAGES[@]}")"
+else
+  GITHUB_PACKAGES_R=""
+fi
 
 cp "${SCRIPT_DIR}/check_reference_compatibility.R" "${BUILD_DIR}/check_reference_compatibility.R"
 mkdir -p "${BUILD_DIR}/maps"
@@ -269,6 +281,11 @@ RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); if (!r
 RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); cran_packages <- c(${CRAN_PACKAGES_R}); if (length(cran_packages) > 0) install.packages(cran_packages, lib = Sys.getenv("PREDITR_REFERENCE_RLIB"))'
 
 RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); .libPaths(c(Sys.getenv("PREDITR_REFERENCE_RLIB"), .libPaths())); packages <- c(${PACKAGES_R}); BiocManager::install(packages, lib = Sys.getenv("PREDITR_REFERENCE_RLIB"), ask = FALSE, update = FALSE)'
+
+# GitHub packages (e.g. crisprDesignData) are only needed at build time to
+# produce annotation/txdb.rds, so they install into the default library rather
+# than the shipped rlib.
+RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); gh <- c(${GITHUB_PACKAGES_R}); if (length(gh) > 0) { if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes"); remotes::install_github(gh, upgrade = "never") }'
 
 RUN Rscript -e '.libPaths(c(Sys.getenv("PREDITR_REFERENCE_RLIB"), .libPaths())); if (identical(Sys.getenv("ANNOTATION_LOADER"), "rds")) { load_source <- function() { if (identical(Sys.getenv("ANNOTATION_SOURCE_LOADER"), "data")) { env <- new.env(parent = emptyenv()); utils::data(list = Sys.getenv("ANNOTATION_OBJECT"), package = Sys.getenv("ANNOTATION_PACKAGE"), envir = env); env[[Sys.getenv("ANNOTATION_OBJECT")]] } else { getExportedValue(Sys.getenv("ANNOTATION_PACKAGE"), Sys.getenv("ANNOTATION_OBJECT")) } }; txdb <- load_source(); if (identical(Sys.getenv("ANNOTATION_TRANSFORM"), "txdb2grangeslist")) { txdb <- crisprDesign::TxDb2GRangesList(txdb) }; rds_path <- file.path(Sys.getenv("PREDITR_REFERENCE_DIR"), Sys.getenv("ANNOTATION_RDS_PATH")); dir.create(dirname(rds_path), recursive = TRUE, showWarnings = FALSE); saveRDS(txdb, rds_path) }'
 

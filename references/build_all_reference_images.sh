@@ -59,7 +59,7 @@ if [[ ! -f "${CONFIG}" ]]; then
 fi
 
 line_num=0
-while IFS=$'\t' read -r organism label genome_build image bioc_version platform genome_package annotation_package annotation_object annotation_loader annotation_source_loader annotation_transform bioc_packages cran_packages enabled; do
+while IFS=$'\t' read -r organism label genome_build image bioc_version platform genome_package annotation_package annotation_object annotation_loader annotation_source_loader annotation_transform bioc_packages cran_packages github_packages enabled; do
   line_num=$((line_num + 1))
   if [[ "${line_num}" -eq 1 ]]; then
     continue
@@ -98,6 +98,13 @@ while IFS=$'\t' read -r organism label genome_build image bioc_version platform 
   for pkg in "${cran_package_array[@]}"; do
     if [[ -n "${pkg}" && "${pkg}" != "none" ]]; then
       cmd+=(--cran-package "${pkg}")
+    fi
+  done
+
+  IFS=',' read -r -a github_package_array <<< "${github_packages}"
+  for pkg in "${github_package_array[@]}"; do
+    if [[ -n "${pkg}" && "${pkg}" != "none" ]]; then
+      cmd+=(--github-package "${pkg}")
     fi
   done
 

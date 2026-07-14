@@ -60,8 +60,17 @@ parseArguments <- function(){
   
   args <- argparser::add_argument(args, "--non_editing_controls", help = "Indicates if PrEditR will search for non-editing guides.",
                        type = "character", default = "FALSE")
-  
-  
+
+  args <- argparser::add_argument(args, "--references_path",
+                       help = "Directory holding per-organism reference data (one subdirectory per
+                     organism, each with a preditr_reference.json). Overrides the
+                     PREDITR_REFERENCES_PATH environment variable. Defaults to /refs.",
+                       type = "character", default = "")
+
+  args <- argparser::add_argument(args, "--list_organisms", flag = TRUE,
+                       help = "List the organisms available under --references_path and exit.")
+
+
   parsed_args <- argparser::parse_args(args)
   
   return(list(
@@ -79,6 +88,8 @@ parseArguments <- function(){
     shiny = parsed_args$shiny,
     off_targets = parsed_args$off_targets,
     non_editing_controls = parsed_args$non_editing_controls,
-    tmp = parsed_args$tmp
+    tmp = parsed_args$tmp,
+    references_path = parsed_args$references_path,
+    list_organisms = parsed_args$list_organisms
   ))
 }

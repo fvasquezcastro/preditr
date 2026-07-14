@@ -152,8 +152,20 @@ server <- function(input, output, session) {
   pretty_results_path <- reactiveVal(NULL) #This is for the table, not the plot!
   full_df <- reactiveVal(NULL)
   filtered_df <- reactiveVal(NULL)
-  organism_val <- reactiveVal("Human") # Global organism reactive value. By default Human because the example output is for human 
-  
+  organism_val <- reactiveVal("Human") # Global organism reactive value. By default Human because the example output is for human
+
+  # Populate the organism dropdowns from the references actually installed under
+  # PREDITR_REFERENCES_PATH (/refs). Falls back to the static ui.R choices when
+  # the resolver finds nothing (e.g. a legacy image with baked-in human/mouse).
+  local({
+    refs <- tryCatch(discoverReferences(), error = function(e) NULL)
+    if (!is.null(refs) && nrow(refs) > 0) {
+      org_choices <- stats::setNames(refs$organism_id, refs$organism_label)
+      updateSelectInput(session, "direct_organism", choices = org_choices)
+      updateSelectInput(session, "batch_organism", choices = org_choices)
+    }
+  })
+
   # --- DOWNLOAD HANDLERS ---
   output$download_results <- make_download_handler(results_path)
   output$download_log <- make_download_handler(log_path)

@@ -5,6 +5,6 @@ docker buildx build \
   --platform linux/amd64 \
   --progress=plain \
   -f preditr_base_os.dockerfile \
-  -t fvasquezcastro/preditr_base:v7_amd64 \
+  -t fvasquezcastro/preditr_base:v8_amd64 \
   --push \
   .

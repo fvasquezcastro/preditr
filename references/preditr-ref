@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# preditr-ref — manage PrEditR organism reference images on this machine.
+#
+# Reference data ships as `fvasquezcastro/preditr-ref:<organism>-<genome>` images.
+# This helper pulls them and "syncs" them into a plain references directory that
+# PrEditR (Shiny or CLI) reads via PREDITR_REFERENCES_PATH / --references_path.
+# Each image is a one-shot container that copies /image-refs/<organism> into /refs.
+#
+# Commands:
+#   preditr-ref list                 Show organisms in the registry, which images
+#                                    are pulled locally, and which are synced.
+#   preditr-ref pull  <organism|all> Docker-pull the reference image(s).
+#   preditr-ref sync  [organism|all] Populate the references directory from pulled
+#                                    images (default: all pulled organisms).
+#
+# The references directory defaults to $PREDITR_REFERENCES_PATH, else ~/.preditr/refs.
+# Override per-invocation with --dest DIR.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG="${PREDITR_REF_CONFIG:-${SCRIPT_DIR}/reference_organisms.tsv}"
+REPO="fvasquezcastro/preditr-ref"
+DEST="${PREDITR_REFERENCES_PATH:-${HOME}/.preditr/refs}"
+
+usage() { sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+
+# Parse leading --dest DIR if present.
+if [[ "${1:-}" == "--dest" ]]; then
+  DEST="$2"; shift 2
+fi
+
+CMD="${1:-list}"; shift || true
+
+# Read enabled organisms from the registry into parallel arrays.
+ORGANISMS=(); IMAGES=()
+read_registry() {
+  local n=0
+  while IFS=$'\t' read -r organism label genome_build image rest; do
+    n=$((n + 1)); [[ "${n}" -eq 1 ]] && continue
+    [[ -z "${organism}" || "${organism:0:1}" == "#" ]] && continue
+    # enabled is the last column; grab it without naming every field.
+    local enabled="${rest##*$'\t'}"
+    [[ "${enabled}" != "true" ]] && continue
+    ORGANISMS+=("${organism}"); IMAGES+=("${image}")
+  done < "${CONFIG}"
+}
+
+image_for() {
+  local want="$1" i
+  for i in "${!ORGANISMS[@]}"; do
+    [[ "${ORGANISMS[$i]}" == "${want}" ]] && { echo "${IMAGES[$i]}"; return 0; }
+  done
+  return 1
+}
+
+image_present() { docker image inspect "$1" >/dev/null 2>&1; }
+
+read_registry
+[[ "${#ORGANISMS[@]}" -gt 0 ]] || { echo "No enabled organisms in ${CONFIG}" >&2; exit 1; }
+
+case "${CMD}" in
+  list)
+    printf '%-10s %-40s %-8s %-8s\n' ORGANISM IMAGE PULLED SYNCED
+    for i in "${!ORGANISMS[@]}"; do
+      local_pulled="no"; image_present "${IMAGES[$i]}" && local_pulled="yes"
+      synced="no"; [[ -f "${DEST}/${ORGANISMS[$i]}/preditr_reference.json" ]] && synced="yes"
+      printf '%-10s %-40s %-8s %-8s\n' "${ORGANISMS[$i]}" "${IMAGES[$i]}" "${local_pulled}" "${synced}"
+    done
+    echo; echo "References directory: ${DEST}"
+    ;;
+
+  pull)
+    target="${1:-all}"
+    for i in "${!ORGANISMS[@]}"; do
+      if [[ "${target}" == "all" || "${target}" == "${ORGANISMS[$i]}" ]]; then
+        echo "Pulling ${IMAGES[$i]} ..."
+        docker pull "${IMAGES[$i]}"
+      fi
+    done
+    ;;
+
+  sync)
+    target="${1:-all}"
+    mkdir -p "${DEST}"
+    synced_any=0
+    for i in "${!ORGANISMS[@]}"; do
+      [[ "${target}" != "all" && "${target}" != "${ORGANISMS[$i]}" ]] && continue
+      if ! image_present "${IMAGES[$i]}"; then
+        [[ "${target}" == "all" ]] && continue  # skip un-pulled when syncing all
+        echo "Image not pulled: ${IMAGES[$i]} (run: preditr-ref pull ${ORGANISMS[$i]})" >&2
+        exit 1
+      fi
+      echo "Syncing ${ORGANISMS[$i]} -> ${DEST}/${ORGANISMS[$i]} ..."
+      # The image CMD copies /image-refs/<organism> into the mounted /refs.
+      docker run --rm -v "${DEST}:/refs" "${IMAGES[$i]}"
+      synced_any=1
+    done
+    [[ "${synced_any}" -eq 1 ]] || { echo "Nothing synced. Pull an image first." >&2; exit 1; }
+    echo "Done. Point PrEditR at it with --references_path ${DEST} (or PREDITR_REFERENCES_PATH=${DEST})."
+    ;;
+
+  -h|--help|help) usage ;;
+  *) echo "Unknown command: ${CMD}" >&2; usage >&2; exit 1 ;;
+esac
