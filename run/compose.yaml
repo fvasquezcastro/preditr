@@ -1,0 +1,41 @@
+name: preditr
+
+services:
+  refs-human:
+    image: fvasquezcastro/preditr-ref-human:grch38-bioc3.19-v1
+    platform: linux/amd64
+    volumes:
+      - preditr_refs:/refs
+    command: ["sh", "-c", "rm -rf /refs/human && mkdir -p /refs && cp -a /image-refs/human /refs/human"]
+    restart: "no"
+
+  refs-mouse:
+    image: fvasquezcastro/preditr-ref-mouse:mm10-bioc3.19-v1
+    platform: linux/amd64
+    volumes:
+      - preditr_refs:/refs
+    command: ["sh", "-c", "rm -rf /refs/mouse && mkdir -p /refs && cp -a /image-refs/mouse /refs/mouse"]
+    restart: "no"
+
+  preditr-shiny:
+    image: fvasquezcastro/preditr:v26_amd64
+    ports:
+      - "3838:3838"
+    volumes:
+      - preditr_refs:/refs
+      - ./preditr_outputs:/outputs
+    environment:
+      PREDITR_HOSTED: "TRUE"
+      PREDITR_REFERENCES_PATH: /refs
+      PREDITR_OUTPUTS_PATH: /outputs
+      PREDITR_THREADS: "${PREDITR_THREADS:-2}"
+      PREDITR_INPUT_ROWS: "${PREDITR_INPUT_ROWS:-500}"
+      PREDITR_FILE_SIZE: "${PREDITR_FILE_SIZE:-500}"
+    depends_on:
+      refs-human:
+        condition: service_completed_successfully
+      refs-mouse:
+        condition: service_completed_successfully
+
+volumes:
+  preditr_refs:

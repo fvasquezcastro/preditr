@@ -106,7 +106,7 @@ server <- function(input, output, session) {
   
   # --- INITIALIZATION ---
   is_running <- reactiveVal(FALSE)
-  session_folder <- normalizePath(file.path("tmp", paste0("preditr_", session$token)), mustWork = FALSE)
+  session_folder <- normalizePath(file.path(outputs_path, paste0("preditr_", session$token)), mustWork = FALSE)
   dir.create(session_folder, recursive = TRUE, showWarnings = FALSE)
   output_folder <- session_folder
   

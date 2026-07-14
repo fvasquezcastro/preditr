@@ -12,6 +12,20 @@ options(shiny.maxRequestSize = 500 * 1024^2)  # 500 MB
 # --- ENVIRONMENT CONFIGURATION (HOSTED FLAGS) ---
 hosted <- Sys.getenv("PREDITR_HOSTED", "FALSE") %in% c("TRUE", "true", "1")
 
+# --- PATHS (apply to both hosted and local, e.g. Docker Compose deployments) ---
+# Base directory for per-session output folders. Defaults to "tmp" (relative to the
+# app working directory) to preserve the historical behavior; the Compose stack sets
+# PREDITR_OUTPUTS_PATH=/outputs so results land on the mounted host volume.
+outputs_path <- Sys.getenv("PREDITR_OUTPUTS_PATH", unset = "tmp")
+
+# Base directory holding per-organism reference data (one subdirectory per organism,
+# each with a preditr_reference.json), populated by the reference initializer images.
+# Empty when unset; the Compose stack sets PREDITR_REFERENCES_PATH=/refs. NOTE: the
+# app does not yet auto-discover/load organisms from this path (organism support is
+# still the hardcoded human/mouse packages baked into the app image); this exposes the
+# path for that upcoming reference-discovery layer. See references/docs/.
+references_path <- Sys.getenv("PREDITR_REFERENCES_PATH", unset = "")
+
 # Initialize global variables
 hosted_threads <- 2
 max_input_rows <- 500
