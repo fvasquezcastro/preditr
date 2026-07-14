@@ -61,6 +61,92 @@ ui <- navbarPage(
   # ---- Search Tab ----
   tabPanel(
     title = "Search",
+    value = "direct_input_tab",
+    div(class = "container",
+        div(style = "
+                display: flex;
+                justify-content: center;
+                align-items: center;",
+            img(src = "main_fig.png",
+                alt = "Graphical Abstract",
+                style = "max-width: 800px; height: auto; margin-left: 110px;")
+        ),
+
+        div(class = "section-title", "General Parameters"),
+        fluidRow(
+          column(3, style = "text-align: center;",
+                 selectInput("direct_organism", "Organism", choices = c("Human", "Mouse"))
+          ),
+          column(3, style = "text-align: center;",
+                 textInput("direct_job_name", "Job Name")
+          ),
+          column(3, style = "text-align:center;",
+                 selectInput("direct_non_editing_controls", "Include Non-Editing Controls", choices = c("FALSE", "TRUE"))
+          ),
+          column(3, style = "text-align: center;",
+                 numericInput("direct_threads", "Threads (Multiprocessing)", value = ifelse(hosted, hosted_threads, 2), min = 2)
+          )
+        ),
+
+        div(class = "section-title", "Off-Target Search Parameters"),
+        fluidRow(
+          column(ifelse(hosted, 4, 3), style = "text-align: center;",
+                 selectInput("direct_off_targets", "Enable Off-Targets Search", choices = c("FALSE", "TRUE"))
+          ),
+          column(ifelse(hosted, 4, 3), style = "text-align: center;",
+                 numericInput("direct_n_mismatches", "Max Mismatches", value = 3, min = 0, max = ifelse(hosted, 3, NA))
+          ),
+          column(ifelse(hosted, 4, 3), style = "text-align: center;",
+                 numericInput("direct_n_max_alignments", "Max Alignments", value = 10, min = 1, max = ifelse(hosted, 10, NA))
+          ),
+
+          if (!hosted){
+            column(3, style = "text-align: center;",
+                   textInput("direct_genome_path", "Indexed Genome Directory")
+            )}
+        ),
+
+        div(class = "section-title", "Editors"),
+        div(class = "direct-editors-control",
+            tags$label(
+              class = "direct-editors-label",
+              "Editor(s)",
+              tags$span(class = "required-asterisk", "*")
+            ),
+            actionButton("open_direct_editors", "Choose Editors", class = "btn btn-secondary"),
+            uiOutput("direct_editors_summary")
+        ),
+
+        div(class = "section-title", "Targets"),
+        div(
+          class = "required-note",
+          tags$span(class = "required-asterisk", "*"),
+          " Required. Provide either an Ensembl transcript ID or a UniProt ID for each target."
+        ),
+        uiOutput("direct_targets_ui"),
+        div(class = "run-button-container",
+            style = "margin-top: 15px; gap: 10px;",
+            actionButton("add_direct_target", "Add Target", class = "btn btn-secondary"),
+            actionButton("remove_direct_target", "Remove Last Target", class = "btn btn-secondary")
+        ),
+
+        div(class = "run-button-container",
+            add_busy_spinner(spin = "fading-circle", color = "#007bff"),
+            actionButton("run_direct_button", "Run Search", class = "btn btn-primary run-button")
+        ),
+
+        div(class = "run-button-container",
+            style = "margin-top: 15px; gap: 10px;",
+            actionButton("view_results_button_direct", "Load Results", class = "btn btn-secondary"),
+            downloadButton("download_results_direct", "Download Results (.csv)"),
+            downloadButton("download_log_direct", "Download Log (.log)")
+        )
+    )
+  ),
+
+  # ---- Batch Search Tab ----
+  tabPanel(
+    title = "Batch Search",
     div(class = "container",
         
         # --- Logo ---

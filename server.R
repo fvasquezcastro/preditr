@@ -20,23 +20,31 @@ server <- function(input, output, session) {
     
     if (!allow_off_targets){
       disable("off_targets")
+      disable("direct_off_targets")
       disable("batch_n_mismatches")
+      disable("direct_n_mismatches")
       disable("batch_n_max_alignments")
+      disable("direct_n_max_alignments")
     }
     
     if (!allow_off_targets_finetuning){
       disable("batch_n_mismatches")
+      disable("direct_n_mismatches")
       disable("batch_n_max_alignments")
+      disable("direct_n_max_alignments")
     }
     
     if (!allow_non_editing){
       disable("non_editing_controls")
+      disable("direct_non_editing_controls")
     }
     
     disable("batch_threads")
+    disable("direct_threads")
     
     # Also disable the indexed genome button to avoid confusion since it is not needed online
     shinyjs::hide("batch_genome_path")
+    shinyjs::hide("direct_genome_path")
   }
   
   # Welcome message
@@ -104,8 +112,11 @@ server <- function(input, output, session) {
   
   # Hide or disable UI elements at start
   shinyjs::hide("view_results_button")
+  shinyjs::hide("view_results_button_direct")
   shinyjs::hide("download_results")
+  shinyjs::hide("download_results_direct")
   shinyjs::hide("download_log")
+  shinyjs::hide("download_log_direct")
   shinyjs::hide("download_results_tab")
   shinyjs::hide("download_log_tab")
   shinyjs::hide("view_results_button2")
@@ -137,6 +148,7 @@ server <- function(input, output, session) {
   log_path <- reactiveVal(NULL)
   latest_results_path <- reactiveVal(NULL)
   latest_log_path <- reactiveVal(NULL)
+  latest_job_name <- reactiveVal(NULL)
   pretty_results_path <- reactiveVal(NULL) #This is for the table, not the plot!
   full_df <- reactiveVal(NULL)
   filtered_df <- reactiveVal(NULL)
@@ -145,6 +157,8 @@ server <- function(input, output, session) {
   # --- DOWNLOAD HANDLERS ---
   output$download_results <- make_download_handler(results_path)
   output$download_log <- make_download_handler(log_path)
+  output$download_results_direct <- make_download_handler(results_path)
+  output$download_log_direct <- make_download_handler(log_path)
   output$download_results_tab <- make_download_handler(results_path)
   output$download_log_tab <- make_download_handler(log_path)
   
@@ -351,90 +365,356 @@ server <- function(input, output, session) {
       )
   })
   
-  # --- MAIN RUN LOGIC ---
-  # Check file size as soon as it is uploaded
-  row_count <- reactiveVal(NULL) #Global to be accessed later by observeEvent input$run_batch_button
+  # --- DIRECT INPUT SETUP ---
+  `%||%` <- function(x, y) {
+    if (is.null(x)) y else x
+  }
   
-  observeEvent(input$batch_file, {
-    # Input check
-    n_rows <- length(readr::read_lines(input$batch_file$datapath))
-    row_count(n_rows)
-    
-    # max_input_rows is defined in global.R
-    if (hosted && (n_rows - 1 > max_input_rows)) {
-      showModal(modalDialog(
-        title = "Too many rows",
-        paste0("Your file has ", n_rows - 1, " data rows, but the maximum allowed in the online version is ", max_input_rows, ". To process any file size, please use the local version."),
-        easyClose = TRUE,
-        footer = modalButton("Dismiss")
-      ))
-      shinyjs::reset("batch_file")
+  editors_template_path <- normalizePath(file.path("www", "editors_example.csv"), mustWork = TRUE)
+
+  load_example_editors <- function() {
+    editors_df <- read.csv(editors_template_path, header = TRUE,
+                           colClasses = "character", blank.lines.skip = TRUE)
+    editors_df[] <- lapply(editors_df, function(x) if (is.character(x)) trimws(x) else x)
+    editors_df
+  }
+
+  example_editors_df <- load_example_editors()
+  selected_direct_editors <- reactiveVal(character(0))
+
+  format_edit_type <- function(edit_type) {
+    edit_type <- toupper(trimws(edit_type))
+    parts <- strsplit(edit_type, "2", fixed = TRUE)[[1]]
+    if (length(parts) == 2 && all(nzchar(parts))) {
+      paste0(parts[1], ">", parts[2])
+    } else {
+      edit_type
+    }
+  }
+
+  editor_edit_window_sequence <- function(editor) {
+    guide_sequence <- paste(rep("ATGC", 5), collapse = "")
+    pam_sequence <- toupper(trimws(editor$pam %||% ""))
+    edit_window_min <- suppressWarnings(as.integer(editor$edit_window_min))
+    edit_window_max <- suppressWarnings(as.integer(editor$edit_window_max))
+
+    if (!nzchar(pam_sequence) || is.na(edit_window_min) || is.na(edit_window_max)) {
+      return(NULL)
+    }
+
+    edit_window <- seq(min(edit_window_min, edit_window_max), max(edit_window_min, edit_window_max))
+    guide_bases <- strsplit(guide_sequence, "", fixed = TRUE)[[1]]
+    pam_bases <- strsplit(pam_sequence, "", fixed = TRUE)[[1]]
+    guide_positions <- seq(-length(guide_bases), -1)
+
+    tags$div(
+      class = "direct-editor-window-sequence",
+      tags$span(class = "direct-editor-window-label", "Edit window:"),
+      tags$span(
+        class = "direct-editor-sequence-text",
+        lapply(seq_along(guide_bases), function(i) {
+          tags$span(
+            class = if (guide_positions[i] %in% edit_window) "direct-editor-window-base" else NULL,
+            guide_bases[i]
+          )
+        }),
+        tags$span(
+          class = "direct-editor-pam-sequence",
+          lapply(pam_bases, tags$span)
+        )
+      )
+    )
+  }
+
+  optional_editor_link <- function(url, label) {
+    url <- trimws(url %||% "")
+    if (!nzchar(url)) {
+      return(NULL)
+    }
+    tags$a(label, href = url, target = "_blank", rel = "noopener noreferrer")
+  }
+
+  editor_choice_id <- function(i) {
+    paste0("direct_editor_choice_", i)
+  }
+
+  output$direct_editors_summary <- renderUI({
+    selected <- selected_direct_editors()
+
+    if (length(selected) == 0) {
+      return(div(class = "direct-editors-empty", "No editors selected"))
+    }
+
+    selected_df <- example_editors_df[example_editors_df$editor_name %in% selected, , drop = FALSE]
+    div(
+      class = "direct-editor-pills",
+      lapply(seq_len(nrow(selected_df)), function(i) {
+        tags$span(
+          class = "direct-editor-pill",
+          selected_df$editor_name[i],
+          tags$small(
+            paste0(" PAM ", selected_df$pam[i], " | ", format_edit_type(selected_df$edit_type[i]))
+          )
+        )
+      })
+    )
+  })
+
+  observeEvent(input$open_direct_editors, {
+    selected <- selected_direct_editors()
+
+    showModal(modalDialog(
+      title = "Choose Editors",
+      size = "l",
+      easyClose = TRUE,
+      div(
+        class = "direct-editor-modal",
+        tags$p(
+          class = "direct-editor-modal-note",
+          "Select one or more base editors. PAM and conversion type are shown for each editor."
+        ),
+        lapply(seq_len(nrow(example_editors_df)), function(i) {
+          editor <- example_editors_df[i, , drop = FALSE]
+          div(
+            class = "direct-editor-option",
+            checkboxInput(
+              editor_choice_id(i),
+              label = NULL,
+              value = editor$editor_name %in% selected
+            ),
+            div(
+              class = "direct-editor-option-body",
+              div(class = "direct-editor-option-name", editor$editor_name),
+              div(
+                class = "direct-editor-option-meta",
+                tags$span("PAM: ", tags$strong(editor$pam)),
+                tags$span("Conversion: ", tags$strong(format_edit_type(editor$edit_type))),
+                tags$span("Spacer length: ", tags$strong(paste0(editor$spacer_length, " nt")))
+              ),
+              editor_edit_window_sequence(editor),
+              div(
+                class = "direct-editor-option-links",
+                optional_editor_link(editor$addgene_optional, "Addgene"),
+                optional_editor_link(editor$reference_optional, "Original publication")
+              )
+            )
+          )
+        })
+      ),
+      footer = tagList(
+        modalButton("Cancel"),
+        actionButton("clear_direct_editors", "Clear", class = "btn btn-secondary"),
+        actionButton("apply_direct_editors", "Apply", class = "btn btn-primary")
+      )
+    ))
+  })
+
+  observeEvent(input$clear_direct_editors, {
+    selected_direct_editors(character(0))
+    removeModal()
+  })
+
+  observeEvent(input$apply_direct_editors, {
+    selected <- example_editors_df$editor_name[
+      vapply(seq_len(nrow(example_editors_df)), function(i) {
+        isTRUE(input[[editor_choice_id(i)]])
+      }, logical(1))
+    ]
+
+    selected_direct_editors(selected)
+    removeModal()
+  })
+
+  direct_target_count <- reactiveVal(1L)
+
+  output$direct_targets_ui <- renderUI({
+    required_label <- function(label) {
+      tags$span(label, tags$span(class = "required-asterisk", "*"))
+    }
+
+    rows <- seq_len(direct_target_count())
+    tagList(lapply(rows, function(i) {
+      fluidRow(
+        class = "direct-target-row",
+        column(2, textInput(paste0("direct_gene_symbol_", i), "Gene Symbol")),
+        column(3, textInput(paste0("direct_ensembl_id_", i), required_label("Ensembl Transcript ID"))),
+        column(3, textInput(paste0("direct_uniprot_id_", i), required_label("UniProt ID"))),
+        column(2, textInput(paste0("direct_target_aa_", i), required_label("Target AA"))),
+        column(2, textInput(paste0("direct_target_position_", i), required_label("Position")))
+      )
+    }))
+  })
+
+  observeEvent(input$add_direct_target, {
+    direct_target_count(direct_target_count() + 1L)
+  })
+
+  observeEvent(input$remove_direct_target, {
+    if (direct_target_count() > 1L) {
+      direct_target_count(direct_target_count() - 1L)
     }
   })
   
-  observeEvent(input$run_batch_button, {
+  collect_direct_targets <- function(selected_editors) {
+    target_rows <- lapply(seq_len(direct_target_count()), function(i) {
+      gene_symbol <- trimws(isolate(input[[paste0("direct_gene_symbol_", i)]]) %||% "")
+      ensembl_id <- trimws(isolate(input[[paste0("direct_ensembl_id_", i)]]) %||% "")
+      uniprot_id <- trimws(isolate(input[[paste0("direct_uniprot_id_", i)]]) %||% "")
+      target_aa <- toupper(trimws(isolate(input[[paste0("direct_target_aa_", i)]]) %||% ""))
+      target_position <- isolate(input[[paste0("direct_target_position_", i)]])
+      target_position <- if (is.null(target_position) || is.na(target_position)) "" else as.character(target_position)
+
+      if (!nzchar(gene_symbol) && !nzchar(ensembl_id) && !nzchar(uniprot_id) &&
+          !nzchar(target_aa) && !nzchar(target_position)) {
+        return(NULL)
+      }
+
+      data.frame(
+        gene_symbol = gene_symbol,
+        ensembl_id = ensembl_id,
+        uniprot_id = uniprot_id,
+        target_aa = target_aa,
+        target_position = target_position,
+        stringsAsFactors = FALSE
+      )
+    })
+
+    targets_df <- do.call(rbind, Filter(Negate(is.null), target_rows))
     
+    if (is.null(targets_df) || nrow(targets_df) == 0) {
+      stop("Add at least one target before running.")
+    }
+
+    invalid_id <- !nzchar(targets_df$ensembl_id) & !nzchar(targets_df$uniprot_id)
+    if (any(invalid_id)) {
+      stop("Every direct-input target must include an Ensembl ID or UniProt ID.")
+    }
+
+    invalid_required <- !nzchar(targets_df$target_aa) |
+      !nzchar(targets_df$target_position) |
+      is.na(suppressWarnings(as.integer(targets_df$target_position)))
+    if (any(invalid_required)) {
+      stop("Every direct-input target must include target AA and target position.")
+    }
+
+    selected_editor_df <- example_editors_df[example_editors_df$editor_name %in% selected_editors, ]
+    if (nrow(selected_editor_df) == 0) {
+      stop("Select at least one editor.")
+    }
+
+    expanded_targets <- do.call(rbind, lapply(seq_len(nrow(targets_df)), function(i) {
+      cbind(
+        targets_df[rep(i, nrow(selected_editor_df)), , drop = FALSE],
+        editor = selected_editor_df$editor_name,
+        edit_type = selected_editor_df$edit_type,
+        stringsAsFactors = FALSE
+      )
+    }))
+
+    rownames(expanded_targets) <- NULL
+    expanded_targets
+  }
+
+  hide_result_controls <- function() {
     shinyjs::hide("view_results_button")
+    shinyjs::hide("view_results_button_direct")
     shinyjs::hide("download_results")
+    shinyjs::hide("download_results_direct")
     shinyjs::hide("download_log")
+    shinyjs::hide("download_log_direct")
     shinyjs::hide("download_results_tab")
     shinyjs::hide("download_log_tab")
     shinyjs::hide("view_results_button2")
-    shinyjs::disable("load_example_output")
+  }
+
+  show_result_controls <- function() {
+    shinyjs::show("view_results_button")
+    shinyjs::show("view_results_button_direct")
+    shinyjs::show("download_results")
+    shinyjs::show("download_results_direct")
+    shinyjs::show("download_log")
+    shinyjs::show("download_log_direct")
+    shinyjs::show("download_results_tab")
+    shinyjs::show("download_log_tab")
+    shinyjs::show("view_results_button2")
+  }
+
+  show_filter_controls <- function() {
+    shinyjs::show("show_all")
+    shinyjs::show("show_green")
+    shinyjs::show("show_orange")
+    shinyjs::show("show_gray")
+    shinyjs::show("show_pink")
+    shinyjs::show("show_red")
+  }
+
+  render_latest_summary_plot <- function(job_name) {
+    output$results_svg <- renderImage({
+      plot_path <- file.path(output_folder, paste0(job_name, "_summary_plot.svg"))
+      if (!file.exists(plot_path)) {
+        showNotification("No summary plot found in output folder.", type = "warning")
+        return(NULL)
+      }
+      list(
+        src = plot_path,
+        contentType = "image/svg+xml",
+        width = "40%",
+        height = "auto"
+      )
+    }, deleteFile = FALSE)
+  }
+
+  load_latest_results <- function() {
+    job_name <- latest_job_name()
+    req(job_name)
     
-    if (is_running()) return(NULL)
-    shinyjs::disable("run_batch_button")
-    req(input$editors_file, input$batch_file)
-    
-    job_name <- isolate(input$batch_job_name)
-    organism <- isolate(tolower(input$batch_organism))
-    organism_val(ifelse(organism == "Mouse", "mouse", "human")) 
-    n_mismatches <- isolate(input$batch_n_mismatches)
-    n_max_alignments <- isolate(input$batch_n_max_alignments)
-    off_targets <- isolate(input$off_targets)
-    non_editing_controls <- isolate(input$non_editing_controls)
-    # hosted_threads is defined in global.R
-    threads <- isolate(ifelse(hosted, hosted_threads, input$batch_threads))
-    
-    #Delete files from previous jobs, if any
-    #Even though the tmp directory is linked to a unique session token, users might submit one job after another in the same session (i.e., without reloading the app)
-    #When this happens, logs get concatenated in the same file
-    unlink(list.files(output_folder, full.names = TRUE, recursive = TRUE), recursive = TRUE)
-    
-    # Copy uploaded files
-    batch_file_path <- file.path(output_folder, basename(input$batch_file$name))
-    file.copy(input$batch_file$datapath, batch_file_path, overwrite = TRUE)
-    editors_path <- file.path(output_folder, basename(input$editors_file$name))
-    file.copy(input$editors_file$datapath, editors_path, overwrite = TRUE)
-    
+    results_path(file.path(output_folder, paste0(job_name, "_results.csv")))
+    pretty_results_path(file.path(output_folder, paste0(job_name, "_interactive_results.rds")))
+    update_filtered_df()
+    show_filter_controls()
+    render_latest_summary_plot(job_name)
+  }
+
+  get_genome_path <- function(organism, genome_path_input) {
     if (hosted){
       if (allow_off_targets){
-        organism_paths <- c(Human = "hg38_genome_index", Mouse = "mm10_genome_index")
-        # hosted_indexed_genomes_path is defined in global.R
-        genome_path <- file.path(hosted_indexed_genomes_path, organism_paths[organism])
+        organism_paths <- c(human = "hg38_genome_index", mouse = "mm10_genome_index")
+        file.path(hosted_indexed_genomes_path, organism_paths[organism])
       } else {
-        
-        genome_path <- output_folder #just a place holder because the value cannot be empty but they are deactivated
+        output_folder
       }
     } else {
-      genome_path <- file.path("/data", input$batch_genome_path)
+      file.path("/data", genome_path_input)
     }
+  }
+
+  run_shiny_job <- function(batch_file_path, editors_path, job_name, organism, genome_path,
+                            n_mismatches, n_max_alignments, off_targets,
+                            non_editing_controls, threads, total_input_lines,
+                            button_id) {
+    hide_result_controls()
+    shinyjs::disable("load_example_output")
+
+    if (is_running()) return(NULL)
+    shinyjs::disable(button_id)
+
+    latest_job_name(job_name)
+    latest_results_path(file.path(output_folder, paste0(job_name, "_results.csv")))
+    latest_log_path(file.path(output_folder, paste0(job_name, ".log")))
+    organism_val(organism)
     
     is_running(TRUE)
     
     ui_workers <- 1
     
-    #Nested future plan to keep the UI responsive while the actual processing happens
     future::plan(list(
       future::tweak(future::multicore, workers = ui_workers),
       future::tweak(future::multicore, workers = threads - ui_workers)
     ))
     
-    
-    total_steps <- ceiling(row_count()*1.5 + 3 + as.integer(hosted))
+    total_steps <- ceiling(total_input_lines * 1.5 + 3 + as.integer(hosted))
     Sys.setenv(PREDITR_STEPS = as.character(total_steps))
-  
-    # ASYNC EXECUTION
+
     progressr::withProgressShiny(message = "Status", value = 0, {
       progressr::with_progress({
         p <- progressr::progressor(steps = total_steps)
@@ -458,7 +738,7 @@ server <- function(input, output, session) {
             non_editing_controls = non_editing_controls,
             tmp = output_folder,
             debug = (Sys.getenv("PREDITR_DEBUG") == "TRUE"),
-            progressor = p   
+            progressor = p
           )
           exit_code
         }) %...>% (function(exit_code) {
@@ -466,16 +746,14 @@ server <- function(input, output, session) {
           log_path(log_file)
           
           if (exit_code == 0) {
-            shinyjs::show("view_results_button")
-            shinyjs::show("download_results")
-            shinyjs::show("download_log")
-            shinyjs::show("download_results_tab")
-            shinyjs::show("download_log_tab")
-            shinyjs::show("view_results_button2")
+            show_result_controls()
             shinyjs::enable("load_example_output")
             
             results_path(file.path(output_folder, paste0(job_name, "_results.csv")))
             pretty_results_path(file.path(output_folder, paste0(job_name, "_interactive_results.rds")))
+            update_filtered_df()
+            show_filter_controls()
+            render_latest_summary_plot(job_name)
             
             showNotification("Run completed successfully.", type = "message")
           } else {
@@ -493,67 +771,164 @@ server <- function(input, output, session) {
           showNotification(paste("Error:", conditionMessage(e)), type = "error")
         }) %...>% (function(.) {
           is_running(FALSE)
-          shinyjs::enable("run_batch_button")
+          shinyjs::enable(button_id)
           shinyjs::enable("load_example_output")
         })
       })
     }, session = session)
+  }
+  
+  # --- MAIN RUN LOGIC ---
+  # Check file size as soon as it is uploaded
+  row_count <- reactiveVal(NULL) #Global to be accessed later by observeEvent input$run_batch_button
+  
+  observeEvent(input$batch_file, {
+    # Input check
+    n_rows <- length(readr::read_lines(input$batch_file$datapath))
+    row_count(n_rows)
+
+    # max_input_rows is defined in global.R
+    if (hosted && (n_rows - 1 > max_input_rows)) {
+      showModal(modalDialog(
+        title = "Too many rows",
+        paste0("Your file has ", n_rows - 1, " data rows, but the maximum allowed in the online version is ", max_input_rows, ". To process any file size, please use the local version."),
+        easyClose = TRUE,
+        footer = modalButton("Dismiss")
+      ))
+      shinyjs::reset("batch_file")
+    }
   })
   
-  
-  
+  observeEvent(input$run_batch_button, {
+    
+    if (is_running()) return(NULL)
+    req(input$editors_file, input$batch_file)
+    
+    job_name <- isolate(input$batch_job_name)
+    if (!nzchar(job_name)) job_name <- "preditr_batch"
+    organism <- isolate(tolower(input$batch_organism))
+    n_mismatches <- isolate(input$batch_n_mismatches)
+    n_max_alignments <- isolate(input$batch_n_max_alignments)
+    off_targets <- as.logical(isolate(input$off_targets))
+    non_editing_controls <- as.logical(isolate(input$non_editing_controls))
+    # hosted_threads is defined in global.R
+    threads <- isolate(ifelse(hosted, hosted_threads, input$batch_threads))
+
+    #Delete files from previous jobs, if any
+    #Even though the tmp directory is linked to a unique session token, users might submit one job after another in the same session (i.e., without reloading the app)
+    #When this happens, logs get concatenated in the same file
+    unlink(list.files(output_folder, full.names = TRUE, recursive = TRUE), recursive = TRUE)
+
+    # Copy uploaded files
+    batch_file_path <- file.path(output_folder, basename(input$batch_file$name))
+    file.copy(input$batch_file$datapath, batch_file_path, overwrite = TRUE)
+    editors_path <- file.path(output_folder, basename(input$editors_file$name))
+    file.copy(input$editors_file$datapath, editors_path, overwrite = TRUE)
+
+    genome_path <- get_genome_path(organism, input$batch_genome_path)
+    input_lines <- row_count()
+    if (is.null(input_lines)) {
+      input_lines <- length(readr::read_lines(batch_file_path))
+    }
+
+    run_shiny_job(
+      batch_file_path = batch_file_path,
+      editors_path = editors_path,
+      job_name = job_name,
+      organism = organism,
+      genome_path = genome_path,
+      n_mismatches = n_mismatches,
+      n_max_alignments = n_max_alignments,
+      off_targets = off_targets,
+      non_editing_controls = non_editing_controls,
+      threads = threads,
+      total_input_lines = input_lines,
+      button_id = "run_batch_button"
+    )
+  })
+
+  observeEvent(input$run_direct_button, {
+    if (is_running()) return(NULL)
+
+    selected_editors <- isolate(selected_direct_editors())
+    if (is.null(selected_editors) || length(selected_editors) == 0) {
+      showNotification("Select at least one editor.", type = "error")
+      return(NULL)
+    }
+
+    direct_targets <- tryCatch(
+      collect_direct_targets(selected_editors),
+      error = function(e) {
+        showNotification(conditionMessage(e), type = "error")
+        NULL
+      }
+    )
+    if (is.null(direct_targets)) return(NULL)
+
+    if (hosted && nrow(direct_targets) > max_input_rows) {
+      showModal(modalDialog(
+        title = "Too many rows",
+        paste0("Your direct input expands to ", nrow(direct_targets),
+               " target/editor rows, but the maximum allowed in the online version is ",
+               max_input_rows, ". To process any file size, please use the local version."),
+        easyClose = TRUE,
+        footer = modalButton("Dismiss")
+      ))
+      return(NULL)
+    }
+
+    job_name <- isolate(input$direct_job_name)
+    if (!nzchar(job_name)) job_name <- "preditr_direct"
+    organism <- isolate(tolower(input$direct_organism))
+    n_mismatches <- isolate(input$direct_n_mismatches)
+    n_max_alignments <- isolate(input$direct_n_max_alignments)
+    off_targets <- as.logical(isolate(input$direct_off_targets))
+    non_editing_controls <- as.logical(isolate(input$direct_non_editing_controls))
+    threads <- isolate(ifelse(hosted, hosted_threads, input$direct_threads))
+    genome_path <- get_genome_path(organism, input$direct_genome_path)
+
+    unlink(list.files(output_folder, full.names = TRUE, recursive = TRUE), recursive = TRUE)
+    
+    batch_file_path <- file.path(output_folder, paste0(job_name, "_direct_targets.csv"))
+    utils::write.csv(direct_targets, batch_file_path, row.names = FALSE, na = "")
+
+    editors_path <- file.path(output_folder, basename(editors_template_path))
+    file.copy(editors_template_path, editors_path, overwrite = TRUE)
+
+    run_shiny_job(
+      batch_file_path = batch_file_path,
+      editors_path = editors_path,
+      job_name = job_name,
+      organism = organism,
+      genome_path = genome_path,
+      n_mismatches = n_mismatches,
+      n_max_alignments = n_max_alignments,
+      off_targets = off_targets,
+      non_editing_controls = non_editing_controls,
+      threads = threads,
+      total_input_lines = nrow(direct_targets) + 1L,
+      button_id = "run_direct_button"
+    )
+  })
+
+
+
   # --- NAVIGATION OBSERVERS ---
   observeEvent(input$view_results_button, {
-    results_path(file.path(output_folder, paste0(input$batch_job_name, "_results.csv")))
-    pretty_results_path(file.path(output_folder, paste0(input$batch_job_name, "_interactive_results.rds")))
-    update_filtered_df()
-    
-    shinyjs::show("show_all")
-    shinyjs::show("show_green")
-    shinyjs::show("show_orange")
-    shinyjs::show("show_gray")
-    shinyjs::show("show_pink")
-    shinyjs::show("show_red")
-    
-    output$results_svg <- renderImage({
-      plot_path <- file.path(output_folder, paste0(input$batch_job_name, "_summary_plot.svg"))
-      if (!file.exists(plot_path)) {
-        showNotification("No summary plot found in output folder.", type = "warning")
-        return(NULL)
-      }
-      list(
-        src = plot_path,
-        contentType = "image/svg+xml",
-        width = "40%",
-        height = "auto"
-      )
-    }, deleteFile = FALSE)
-    
+    load_latest_results()
+    showNotification("Displaying latest job results.", type = "message")
+    updateNavbarPage(session, "main_navbar", selected = "explore_results_tab")
+  })
+
+  observeEvent(input$view_results_button_direct, {
+    load_latest_results()
     showNotification("Displaying latest job results.", type = "message")
     updateNavbarPage(session, "main_navbar", selected = "explore_results_tab")
   })
   
   # --- LOAD JOB RESULTS BACK (Useful when the example results were loaded and the user wants to go back to their results) ---
   observeEvent(input$view_results_button2, {
-    results_path(file.path(output_folder, paste0(input$batch_job_name, "_results.csv")))
-    pretty_results_path(file.path(output_folder, paste0(input$batch_job_name, "_interactive_results.rds")))
-    update_filtered_df()
-    
-    # Show results plot if available
-    output$results_svg <- renderImage({
-      plot_path <- file.path(output_folder, paste0(input$batch_job_name, "_summary_plot.svg"))
-      if (!file.exists(plot_path)) {
-        showNotification("No summary plot found in output folder.", type = "warning")
-        return(NULL)
-      }
-      list(
-        src = plot_path,
-        contentType = "image/svg+xml",
-        width = "40%",
-        height = "auto"
-      )
-    }, deleteFile = FALSE)
-    
+    load_latest_results()
     showNotification("Displaying latest job results.", type = "message")
   })
   
