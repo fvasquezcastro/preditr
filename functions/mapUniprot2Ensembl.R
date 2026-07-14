@@ -5,7 +5,12 @@ mapUniprot2Ensembl <- function(organism, uniprot_idx) {
   # Normalize input
   uniprot_idx <- ifelse(is.na(uniprot_idx) | uniprot_idx == "", NA_character_, uniprot_idx)
   
-  map_env <- readRDS(file.path(referenceMapsDir(organism), "uniprot_to_ensembl.rds"))
+  map_file <- file.path(referenceMapsDir(organism), "uniprot_to_ensembl.rds")
+  if (!file.exists(map_file)) {
+    ParallelLogger::logInfo("No uniprot_to_ensembl map for this organism; skipping UniProt->Ensembl mapping.")
+    return(rep(NA_character_, length(uniprot_idx)))
+  }
+  map_env <- readRDS(map_file)
   
   `%||%` <- function(x, y) if (is.null(x)) y else x
   

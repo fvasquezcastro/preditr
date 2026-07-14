@@ -248,7 +248,8 @@ if [[ -d "${REPO_ROOT}/maps/${ORGANISM}" ]]; then
 fi
 
 cat > "${DOCKERFILE}" <<DOCKERFILE
-FROM bioconductor/bioconductor_docker:${BIOC_VERSION}
+# ---- Stage 1: builder (full R/Bioconductor) — produces /image-refs/<organism> ----
+FROM bioconductor/bioconductor_docker:${BIOC_VERSION} AS builder
 
 ARG ORGANISM=${ORGANISM}
 ARG ORGANISM_LABEL="${LABEL}"
@@ -302,6 +303,13 @@ RUN if [ -d "/tmp/preditr-maps/\${ORGANISM}" ]; then cp -a "/tmp/preditr-maps/\$
 
 RUN Rscript /tmp/check_reference_compatibility.R "\${PREDITR_REFERENCE_DIR}" /tmp/preditr-maps
 
+# Strip help/docs/vignettes/tests from the shipped rlib — not needed at runtime.
+# Keeps DESCRIPTION/NAMESPACE/R/libs/data/extdata (the 2bit genome is in extdata).
+RUN find "\${PREDITR_REFERENCE_RLIB}" -type d \( -name help -o -name html -o -name doc -o -name examples -o -name tests -o -name unitTests \) -exec rm -rf {} + 2>/dev/null || true
+
+# ---- Stage 2: minimal carrier (no R) — only the payload + a shell to copy it ----
+FROM debian:stable-slim
+COPY --from=builder /image-refs/${ORGANISM} /image-refs/${ORGANISM}
 CMD ["sh", "-c", "rm -rf /refs/${ORGANISM} && mkdir -p /refs && cp -a /image-refs/${ORGANISM} /refs/${ORGANISM}"]
 DOCKERFILE
 
@@ -313,6 +321,7 @@ fi
 build_args=(
   build
   --platform "${PLATFORM}"
+  --provenance=false
   --progress plain
   -f "${DOCKERFILE}"
   -t "${IMAGE}"
