@@ -49,11 +49,11 @@ This avoids a runtime reference API service and keeps PrEditR's execution model 
 ```text
 Docker Desktop
   |
-  +-- preditr-ref-human container
+  +-- refs-human container (preditr-ref:human-grch38)
   |     copies /image-refs/human -> shared volume /refs/human
   |     exits
   |
-  +-- preditr-ref-mouse container
+  +-- refs-mouse container (preditr-ref:mouse-mm10)
   |     copies /image-refs/mouse -> shared volume /refs/mouse
   |     exits
   |
@@ -102,6 +102,8 @@ The directory should include:
 
 `preditr_reference.json` is the stable discovery file used by the Shiny app.
 
+The build also copies the repo's `maps/<organism_id>/` directory into the reference directory as `maps/`, so ID maps and the AlphaFold `plddt.rds` travel with the organism reference. `plddt.rds` is large and organism-specific, so it is excluded from the app image (`.dockerignore`) and lives only here; the app reads it at runtime from `<PREDITR_REFERENCES_PATH>/<organism>/maps/plddt.rds` (see `functions/lookupPLDDT.R`), falling back to the repo's `maps/<organism>/plddt.rds` for host CLI / local development. BLOSUM62 is organism-independent and comes from the Biostrings package in the app image, so it is not shipped per organism.
+
 Example:
 
 ```json
@@ -147,9 +149,9 @@ Reference images should use the same Bioconductor version unless the Shiny image
 Recommended image tags:
 
 ```text
-fvasquezcastro/preditr-shiny:0.1.0-bioc3.19
-fvasquezcastro/preditr-ref-human:grch38-bioc3.19-v1
-fvasquezcastro/preditr-ref-mouse:mm10-bioc3.19-v1
+fvasquezcastro/preditr:1.8.0_amd64
+fvasquezcastro/preditr-ref:human-grch38
+fvasquezcastro/preditr-ref:mouse-mm10
 ```
 
 Avoid relying on `latest` for releases. The Compose file should pin a tested set of tags.
@@ -161,21 +163,21 @@ Generated `compose.yaml`:
 ```yaml
 services:
   refs-human:
-    image: fvasquezcastro/preditr-ref-human:grch38-bioc3.19-v1
+    image: fvasquezcastro/preditr-ref:human-grch38
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/human && cp -a /image-refs/human /refs/human"]
     restart: "no"
 
   refs-mouse:
-    image: fvasquezcastro/preditr-ref-mouse:mm10-bioc3.19-v1
+    image: fvasquezcastro/preditr-ref:mouse-mm10
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/mouse && cp -a /image-refs/mouse /refs/mouse"]
     restart: "no"
 
   preditr-shiny:
-    image: fvasquezcastro/preditr:v26_amd64
+    image: fvasquezcastro/preditr:1.8.0_amd64
     ports:
       - "3838:3838"
     volumes:
@@ -286,7 +288,7 @@ references/build_reference_image.sh \
   --organism human \
   --label Human \
   --genome-build GRCh38 \
-  --image fvasquezcastro/preditr-ref-human:grch38-bioc3.19-v1 \
+  --image fvasquezcastro/preditr-ref:human-grch38 \
   --genome-package BSgenome.Hsapiens.UCSC.hg38 \
   --annotation-package TxDb.Hsapiens.UCSC.hg38.knownGene \
   --annotation-object TxDb.Hsapiens.UCSC.hg38.knownGene \
@@ -329,8 +331,8 @@ This lets the workflow evolve without requiring raw FASTA/GTF uploads yet.
 
 The first practical milestone should include only human and mouse:
 
-- `preditr-ref-human`
-- `preditr-ref-mouse`
+- `preditr-ref:human-grch38`
+- `preditr-ref:mouse-mm10`
 - `preditr-shiny`
 - a Compose file that starts the reference initializer containers and the app
 - Shiny reference discovery from `/refs`

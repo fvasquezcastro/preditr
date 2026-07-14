@@ -61,7 +61,7 @@ generateOutput <- function(df, job_name, output_path, results, offtargets_df, of
   
   output[] <- lapply(output, as.character)
   output[is.na(output)] <- ""
-  
+
   if (non_targeting_controls){
     
     output <- addNEC(output, editors_path, non_targeting_controls, flanking5, flanking3,
@@ -69,7 +69,11 @@ generateOutput <- function(df, job_name, output_path, results, offtargets_df, of
                      txdb)
     
   }
-  
+
+  #Per-mutation metrics: BLOSUM62 substitution score and AlphaFold pLDDT confidence (see annotateMetrics.R).
+  #Run after addNEC so non-editing-control rows (which have no edits) also carry the columns, kept blank.
+  output <- annotateMetrics(output, organism)
+
   write.csv(unique(output), file = file.path(output_path, paste0(job_name, "_results", ".csv")), row.names = FALSE)
   
   return(unique(output))

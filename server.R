@@ -275,7 +275,7 @@ server <- function(input, output, session) {
     
     #Default columns to show
     default_visible_cols <- c("query_num", "gene_symbol", "ensembl_id","uniprot_id","target_aa", "target_position",
-                              "protospacer_seq", "mutation_type", "edits", "warnings", "error")
+                              "protospacer_seq", "mutation_type", "edits", "blosum_score", "plddt_score", "warnings", "error")
     
     hidden_cols <- which(!names(df) %in% default_visible_cols) - 1
     color_col_idx <- which(names(df) == "row_color") - 1
@@ -308,6 +308,8 @@ server <- function(input, output, session) {
       wildtype_sequence = "Wildtype AA Sequence",
       mutant_sequence = "Mutant AA Sequence",
       edits = "Edits",
+      blosum_score = "BLOSUM62",
+      plddt_score = "pLDDT",
       warnings = "Warnings",
       error = "Errors",
       EcoRI = "EcoRI",

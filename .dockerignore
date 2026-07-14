@@ -1,0 +1,6 @@
+# Keep the AlphaFold pLDDT maps out of the app image (preditr.dockerfile: COPY . /app).
+# pLDDT is large and organism-specific; it ships in the per-organism reference images instead
+# (references/build_reference_image.sh copies maps/<organism>/ through its own build context,
+# which this file does not affect). The app reads it at runtime from PREDITR_REFERENCES_PATH.
+# See references/docs/compose-reference-images.md.
+maps/**/plddt.rds
