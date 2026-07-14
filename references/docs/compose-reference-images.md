@@ -339,6 +339,42 @@ The first practical milestone should include only human and mouse:
 
 At this stage, do not allow user-uploaded FASTA/GTF references. Keep the UI curated and predictable.
 
+## Building a reference before its maps exist
+
+The genome + annotation payload (BSgenome package plus the `GRangesList` written to
+`annotation/txdb.rds`) is built entirely from Bioconductor packages and does **not**
+require the `maps/<organism>/` ID-mapping tables. Those maps are produced separately
+(from biomart/UniProt) and copied into the image only at the final `COPY maps` step.
+
+This means a reference image can be built and fully validated (genome `getSeq`,
+CDS translation, `GRangesList` feature/`tx_id`/`gene_symbol` checks) before its maps
+are available. Two build flags enable this:
+
+- `--allow-non-builtin` → sets `PREDITR_ALLOW_NON_BUILTIN_REFERENCE=TRUE`, permitting
+  organism ids other than `human`/`mouse` past the compatibility gate.
+- `--allow-missing-maps` → sets `PREDITR_ALLOW_MISSING_MAPS=TRUE`, downgrading the
+  missing-`maps/<organism>` error to a NOTE. The genome and annotation are still
+  validated in full.
+
+`build_all_reference_images.sh` passes both flags automatically: `--allow-non-builtin`
+for any organism that is not `human`/`mouse`, and `--allow-missing-maps` whenever
+`maps/<organism>/` is absent in the repo.
+
+To add maps later, drop the files into `maps/<organism>/` and rebuild. Because the
+`COPY maps` step sits near the end of the Dockerfile — after every package install —
+Docker reuses the cached layers up to that point, so the rebuild is cheap.
+
+> The maps must contain the objects the runtime expects: `uniprot_to_ensembl.rds`,
+> `ensembl_to_uniprot.rds`, and `has_isoforms.rds`, each an R environment. When maps
+> are present the compatibility check enforces this; when they are absent (build-only
+> mode) it does not.
+
+> Building the image only produces a validated reference on the shelf. The running
+> app still dispatches through `loadOrganismData.R`, `PrEditR.R`, and
+> `generatePrettyTable.R`, which are hardcoded to `human`/`mouse` (the latter calls
+> `mapEnsembl2MGI()` for every non-human organism). New-organism rows therefore stay
+> `enabled=false` in the TSV until the generic reference adapter lands.
+
 ## Expansion path
 
 To add a new organism:

@@ -315,9 +315,22 @@ if (!is.null(txdb)) {
   }
 }
 
+allow_missing_maps <- Sys.getenv("PREDITR_ALLOW_MISSING_MAPS", "FALSE") %in% c("TRUE", "true", "1")
 organism_maps_dir <- file.path(maps_root, organism_id)
-if (!assert_dir(organism_maps_dir, "Organism map directory")) {
-  add_note("Current workflow reads maps from maps/<organism>; reference images must be paired with these map assets.")
+if (!dir.exists(organism_maps_dir)) {
+  if (allow_missing_maps) {
+    add_note(
+      "Organism map directory not found: ", organism_maps_dir, ". ",
+      "Building without maps because PREDITR_ALLOW_MISSING_MAPS is set. ",
+      "The genome and annotation payload is still validated, but ID mapping will not ",
+      "work at runtime until maps/", organism_id, "/ is provided and the image rebuilt."
+    )
+  } else {
+    add_error(
+      "Organism map directory not found: ", organism_maps_dir, ". ",
+      "Set PREDITR_ALLOW_MISSING_MAPS=TRUE to build the reference payload before maps exist."
+    )
+  }
 } else {
   required_map_files <- c("uniprot_to_ensembl.rds", "ensembl_to_uniprot.rds", "has_isoforms.rds")
   for (map_file in required_map_files) {

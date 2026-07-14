@@ -40,6 +40,11 @@ Options:
   --github-package VALUE       GitHub package (owner/repo) installed at build time,
                                e.g. crisprVerse/crisprDesignData. Repeatable.
   --context VALUE              Docker context name. Default: default.
+  --allow-non-builtin          Permit organism ids other than human/mouse
+                               (sets PREDITR_ALLOW_NON_BUILTIN_REFERENCE=TRUE in the build).
+  --allow-missing-maps         Build the reference payload even when maps/<organism>
+                               is absent (sets PREDITR_ALLOW_MISSING_MAPS=TRUE). The genome
+                               and annotation are still validated; add maps and rebuild later.
   --push                       Push the built image.
   --no-cache                   Build without cache.
   --dry-run                    Print generated Dockerfile and docker command only.
@@ -73,6 +78,8 @@ DOCKER_CONTEXT_NAME="${DOCKER_CONTEXT_NAME:-default}"
 PUSH="false"
 NO_CACHE="false"
 DRY_RUN="false"
+ALLOW_NON_BUILTIN="false"
+ALLOW_MISSING_MAPS="false"
 PACKAGES=()
 CRAN_PACKAGES=()
 GITHUB_PACKAGES=()
@@ -147,6 +154,14 @@ while [[ $# -gt 0 ]]; do
       DOCKER_CONTEXT_NAME="$2"
       shift 2
       ;;
+    --allow-non-builtin)
+      ALLOW_NON_BUILTIN="true"
+      shift
+      ;;
+    --allow-missing-maps)
+      ALLOW_MISSING_MAPS="true"
+      shift
+      ;;
     --push)
       PUSH="true"
       shift
@@ -210,8 +225,31 @@ if [[ "${ANNOTATION_TRANSFORM}" != "none" && "${ANNOTATION_TRANSFORM}" != "txdb2
 fi
 
 CRAN_PACKAGES=("jsonlite" "${CRAN_PACKAGES[@]}")
+
+# Bioconductor packages needed only at build time to produce annotation/txdb.rds.
+# These install into the builder's default library and are NOT shipped in rlib,
+# mirroring how github packages (e.g. crisprDesignData) are treated build-only.
+BUILD_ONLY_PACKAGES=()
 if [[ "${ANNOTATION_TRANSFORM}" == "txdb2grangeslist" ]]; then
-  PACKAGES=("crisprDesign" "${PACKAGES[@]}")
+  BUILD_ONLY_PACKAGES+=("crisprDesign")
+fi
+# When a normalized rds is shipped (annotation_loader=rds), the source annotation
+# package is only needed at build time. If it was listed among the runtime
+# packages, move it to the build-only set so it does not bloat the shipped rlib.
+if [[ "${ANNOTATION_LOADER}" == "rds" && -n "${ANNOTATION_PACKAGE}" ]]; then
+  filtered_packages=()
+  moved_annotation="false"
+  for pkg in "${PACKAGES[@]}"; do
+    if [[ "${pkg}" == "${ANNOTATION_PACKAGE}" ]]; then
+      moved_annotation="true"
+      continue
+    fi
+    filtered_packages+=("${pkg}")
+  done
+  if [[ "${moved_annotation}" == "true" ]]; then
+    PACKAGES=("${filtered_packages[@]}")
+    BUILD_ONLY_PACKAGES+=("${ANNOTATION_PACKAGE}")
+  fi
 fi
 
 package_r_vector() {
@@ -239,6 +277,19 @@ if [[ "${#GITHUB_PACKAGES[@]}" -gt 0 ]]; then
   GITHUB_PACKAGES_R="$(package_r_vector "${GITHUB_PACKAGES[@]}")"
 else
   GITHUB_PACKAGES_R=""
+fi
+if [[ "${#BUILD_ONLY_PACKAGES[@]}" -gt 0 ]]; then
+  BUILD_ONLY_PACKAGES_R="$(package_r_vector "${BUILD_ONLY_PACKAGES[@]}")"
+else
+  BUILD_ONLY_PACKAGES_R=""
+fi
+
+COMPAT_ENV=""
+if [[ "${ALLOW_NON_BUILTIN}" == "true" ]]; then
+  COMPAT_ENV+="ENV PREDITR_ALLOW_NON_BUILTIN_REFERENCE=TRUE"$'\n'
+fi
+if [[ "${ALLOW_MISSING_MAPS}" == "true" ]]; then
+  COMPAT_ENV+="ENV PREDITR_ALLOW_MISSING_MAPS=TRUE"$'\n'
 fi
 
 cp "${SCRIPT_DIR}/check_reference_compatibility.R" "${BUILD_DIR}/check_reference_compatibility.R"
@@ -283,6 +334,11 @@ RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); cran_p
 
 RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); .libPaths(c(Sys.getenv("PREDITR_REFERENCE_RLIB"), .libPaths())); packages <- c(${PACKAGES_R}); BiocManager::install(packages, lib = Sys.getenv("PREDITR_REFERENCE_RLIB"), ask = FALSE, update = FALSE)'
 
+# Build-only Bioconductor packages (e.g. crisprDesign and the source TxDb) are
+# needed only to produce annotation/txdb.rds. They install into the default
+# library, NOT the shipped rlib, so they do not bloat the reference payload.
+RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); build_only <- c(${BUILD_ONLY_PACKAGES_R}); if (length(build_only) > 0) BiocManager::install(build_only, ask = FALSE, update = FALSE)'
+
 # GitHub packages (e.g. crisprDesignData) are only needed at build time to
 # produce annotation/txdb.rds, so they install into the default library rather
 # than the shipped rlib.
@@ -296,7 +352,7 @@ RUN Rscript -e '.libPaths(c(Sys.getenv("PREDITR_REFERENCE_RLIB"), .libPaths()));
 
 RUN Rscript -e 'loader <- c("load_preditr_reference_payload <- function(reference_dir) {", "  manifest <- jsonlite::fromJSON(file.path(reference_dir, \\"preditr_reference.json\\"))", "  .libPaths(c(file.path(reference_dir, manifest\$r_library_path), .libPaths()))", "  requireNamespace(manifest\$genome_package, quietly = FALSE)", "  requireNamespace(manifest\$annotation_package, quietly = FALSE)", "  if (identical(manifest\$annotation_loader, \\"data\\")) {", "    env <- new.env(parent = emptyenv())", "    utils::data(list = manifest\$annotation_object, package = manifest\$annotation_package, envir = env)", "    txdb <- env[[manifest\$annotation_object]]", "  } else if (identical(manifest\$annotation_loader, \\"package-object\\")) {", "    txdb <- getExportedValue(manifest\$annotation_package, manifest\$annotation_object)", "  } else if (identical(manifest\$annotation_loader, \\"rds\\")) {", "    txdb <- readRDS(file.path(reference_dir, manifest\$annotation_path))", "  } else {", "    stop(\\"Unsupported annotation_loader: \\", manifest\$annotation_loader)", "  }", "  list(manifest = manifest, txdb = txdb, genome_package = manifest\$genome_package)", "}"); writeLines(loader, file.path(Sys.getenv("PREDITR_REFERENCE_DIR"), "reference_loader.R"))'
 
-COPY check_reference_compatibility.R /tmp/check_reference_compatibility.R
+${COMPAT_ENV}COPY check_reference_compatibility.R /tmp/check_reference_compatibility.R
 COPY maps /tmp/preditr-maps
 
 RUN if [ -d "/tmp/preditr-maps/\${ORGANISM}" ]; then cp -a "/tmp/preditr-maps/\${ORGANISM}" "\${PREDITR_REFERENCE_DIR}/maps"; fi

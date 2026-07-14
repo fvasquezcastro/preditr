@@ -18,6 +18,7 @@ USAGE
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CONFIG="${SCRIPT_DIR}/reference_organisms.tsv"
 PUSH="false"
 NO_CACHE="false"
@@ -107,6 +108,17 @@ while IFS=$'\t' read -r organism label genome_build image bioc_version platform 
       cmd+=(--github-package "${pkg}")
     fi
   done
+
+  # Organisms other than human/mouse are not yet wired into the app dispatch;
+  # allow the reference payload to build and validate anyway.
+  if [[ "${organism}" != "human" && "${organism}" != "mouse" ]]; then
+    cmd+=(--allow-non-builtin)
+  fi
+  # Maps are supplied separately; build the payload even if they are not present
+  # yet, then rebuild once maps/<organism>/ exists.
+  if [[ ! -d "${REPO_ROOT}/maps/${organism}" ]]; then
+    cmd+=(--allow-missing-maps)
+  fi
 
   if [[ "${PUSH}" == "true" ]]; then
     cmd+=(--push)
