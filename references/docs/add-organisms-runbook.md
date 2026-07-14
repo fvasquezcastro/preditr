@@ -8,17 +8,40 @@ they are supplied separately and added by rebuilding later.
 Read `references/docs/compose-reference-images.md` first for the overall design and
 the reference-image contract. This file is the operational how-to.
 
-## Status (as of this writing)
+## Status (2026-07-14: all 7 attempted — 4 built & pushed, 3 failed)
 
-- **yeast** built and passed all compatibility checks on the first attempt
-  (`crisprDesign::TxDb2GRangesList()` on the raw UCSC `sgdGene` TxDb produced a valid
-  PrEditR `GRangesList` with the required `gene_symbol` CDS column — no OrgDb or
-  transform patch needed). A leaner rebuild (build-only deps out of `rlib`) is the
-  current expected state.
-- The other 6 organisms have TSV rows and are ready to build. They have **not** been
-  verified against Bioconductor 3.19 yet — the main risk is a package name/build
-  suffix that does not exist for that release (see "If a build fails").
-- All 7 rows are `enabled=false` on purpose (see "Why enabled=false").
+All 7 rows were built in parallel on the Docker Build Cloud builder and pushed to Docker
+Hub. **The BSgenome + TxDb package names in `reference_organisms.tsv` are all valid for
+Bioc 3.19** — every genome/annotation package installed cleanly. The 3 failures all die at
+the same step: `crisprDesign::TxDb2GRangesList()` (the raw-TxDb → `GRangesList` transform).
+
+Built, pushed, and verified (manifest + `annotation/txdb.rds` present):
+
+| organism  | image                                          | size    |
+|-----------|------------------------------------------------|---------|
+| yeast     | `fvasquezcastro/preditr-ref:yeast-saccer3`     | 478 MB  |
+| rat       | `fvasquezcastro/preditr-ref:rat-rn7`           | 1.77 GB |
+| fruitfly  | `fvasquezcastro/preditr-ref:fruitfly-dm6`      | 552 MB  |
+| celegans  | `fvasquezcastro/preditr-ref:celegans-ce11`     | 532 MB  |
+
+Failed (not pushed) — exact errors + suggested fixes in
+`references/docs/add-organisms-build-report.md`:
+
+| organism    | failure in `TxDb2GRangesList()`                                              |
+|-------------|------------------------------------------------------------------------------|
+| zebrafish   | `extractSeqlevels("Danio rerio","UCSC")` — no GenomeInfoDb UCSC seqstyle entry |
+| chicken     | `extractSeqlevels("Gallus gallus","UCSC")` — same seqstyle-registry gap        |
+| arabidopsis | `.getBiomartData` — "Organism 'Arabidopsis thaliana' not recognized in biomaRt" |
+
+The 4 that pass do so because their species have both a GenomeInfoDb UCSC seqstyle entry
+and a biomaRt-recognized organism (the transform enriches gene symbols via a build-time
+biomaRt call). See `references/docs/add-organisms-build-report.md` for exact error text,
+per-organism detail, and suggested fixes.
+
+- **yeast** rebuilt leaner than the earlier local image (478 MB vs ~689 MB) — build-only
+  deps (`crisprDesign`, source TxDb) are correctly kept out of the shipped `rlib`.
+- All 7 rows remain `enabled=false` on purpose (see "Why enabled=false"). The 3 failing
+  organisms need a `TxDb2GRangesList` transform change, not a TSV package-name change.
 
 ## What was already changed in the repo
 
