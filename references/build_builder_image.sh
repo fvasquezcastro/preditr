@@ -16,7 +16,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMAGE="fvasquezcastro/preditr-ref:ref-builder"
 BIOC_VERSION="3.19"
 PLATFORM="linux/amd64"
-DOCKER_CONTEXT_NAME="${DOCKER_CONTEXT_NAME:-default}"
+# Default to the caller's active Docker context (empty => no --context flag). On
+# Docker Desktop the active context (desktop-linux) is a different daemon/store
+# than "default" (/var/run/docker.sock); forcing "default" hides the built image
+# from the context the user actually runs in.
+DOCKER_CONTEXT_NAME="${DOCKER_CONTEXT_NAME:-}"
 PUSH="false"
 NO_CACHE="false"
 
