@@ -14,9 +14,15 @@ Options:
   --app-image VALUE     Shiny app image. Default: fvasquezcastro/preditr:1.8.0_amd64.
   --port VALUE          Host port for Shiny. Default: 3838.
   --project-name VALUE  Compose project name. Default: preditr.
+  --no-filter           Wire every enabled organism even if its reference image is
+                        not present locally (compose up will pull it). By default,
+                        only enabled organisms whose image is already present in the
+                        active Docker context are wired.
   -h, --help            Show this help.
 
-Only rows with enabled=true are included.
+Only rows with enabled=true are considered. By default the generator additionally
+keeps only those whose preditr-ref image is already present locally (docker image
+ls), so the stack reflects what has actually been pulled onto this machine.
 USAGE
 }
 
@@ -29,6 +35,7 @@ OUTPUT="${SCRIPT_DIR}/compose.yaml"
 APP_IMAGE="${PREDITR_APP_IMAGE:-fvasquezcastro/preditr:1.8.0_amd64}"
 PORT="${PREDITR_SHINY_PORT:-3838}"
 PROJECT_NAME="preditr"
+FILTER_LOCAL=true
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -52,6 +59,10 @@ while [[ $# -gt 0 ]]; do
       PROJECT_NAME="$2"
       shift 2
       ;;
+    --no-filter)
+      FILTER_LOCAL=false
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -69,6 +80,22 @@ if [[ ! -f "${CONFIG}" ]]; then
   exit 1
 fi
 
+# Decide whether we can (and should) filter enabled organisms down to those whose
+# reference image is already present in the active Docker context. This is how the
+# generated stack "looks into the docker images on the machine": organisms whose
+# image has not been pulled are skipped rather than triggering a pull on `up`.
+# If the docker CLI is unavailable we cannot introspect, so we degrade to wiring
+# all enabled organisms (equivalent to --no-filter) and say so.
+if [[ "${FILTER_LOCAL}" == "true" ]] && ! command -v docker >/dev/null 2>&1; then
+  echo "docker CLI not found; cannot filter by locally present images. Wiring all enabled organisms." >&2
+  FILTER_LOCAL=false
+fi
+
+# Return 0 if the given image reference exists in the active Docker context.
+image_present() {
+  [[ -n "$(docker image ls -q "$1" 2>/dev/null)" ]]
+}
+
 mkdir -p "$(dirname "${OUTPUT}")"
 
 tmp_output="$(mktemp "${TMPDIR:-/tmp}/preditr-compose.XXXXXX")"
@@ -84,6 +111,7 @@ services:
 YAML
 
 enabled_services=()
+skipped_missing=()
 line_num=0
 while IFS=$'\t' read -r organism label genome_build image bioc_version platform genome_package annotation_package annotation_object annotation_loader annotation_source_loader annotation_transform bioc_packages cran_packages github_packages enabled; do
   line_num=$((line_num + 1))
@@ -94,6 +122,12 @@ while IFS=$'\t' read -r organism label genome_build image bioc_version platform 
     continue
   fi
   if [[ "${enabled}" != "true" ]]; then
+    continue
+  fi
+
+  # Skip enabled organisms whose reference image has not been pulled locally.
+  if [[ "${FILTER_LOCAL}" == "true" ]] && ! image_present "${image}"; then
+    skipped_missing+=("${organism} (${image})")
     continue
   fi
 
@@ -180,4 +214,11 @@ mv "${tmp_output}" "${OUTPUT}"
 trap - EXIT
 
 echo "Generated Compose file: ${OUTPUT}"
-echo "Enabled reference services: ${#enabled_services[@]}"
+echo "Wired reference services: ${#enabled_services[@]}"
+if [[ "${#skipped_missing[@]}" -gt 0 ]]; then
+  echo "Skipped ${#skipped_missing[@]} enabled organism(s) whose image is not present locally:" >&2
+  for entry in "${skipped_missing[@]}"; do
+    echo "  - ${entry}" >&2
+  done
+  echo "Pull the image(s) and re-run, or pass --no-filter to wire them anyway." >&2
+fi

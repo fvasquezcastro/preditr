@@ -442,6 +442,22 @@ if (identical(Sys.getenv("PREDITR_MODE"), "CLI")) {
   
   args <- parseArguments()
 
+  # --reference: point PrEditR at a single organism's payload directory. We derive
+  # the organism id from its manifest and treat the parent as the references base,
+  # so the rest of the pipeline (and --list_organisms) behaves as if that base was
+  # passed via --references_path. Filesystem-only: identical under Docker/Singularity.
+  if (!is.na(args$reference) && nzchar(args$reference)) {
+    resolved <- resolveSinglePayload(args$reference)
+    args$references_path <- resolved$references_path
+    organism_given <- !is.null(args$organism) && !is.na(args$organism) && nzchar(args$organism)
+    if (!organism_given) {
+      args$organism <- resolved$organism
+    } else if (!identical(args$organism, resolved$organism)) {
+      stop(sprintf("--organism '%s' does not match the --reference payload organism '%s'.",
+                   args$organism, resolved$organism))
+    }
+  }
+
   # --list_organisms: report what is installed under the references path and exit.
   if (isTRUE(args$list_organisms)) {
     refs <- discoverReferences(if (nzchar(args$references_path)) args$references_path else NULL)

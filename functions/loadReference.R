@@ -89,6 +89,38 @@ discoverReferences <- function(path = NULL) {
   do.call(rbind, rows)
 }
 
+# Resolve a SINGLE organism payload directory (the folder that directly contains
+# preditr_reference.json) into the (organism, base) pair the rest of the pipeline
+# expects. This backs the CLI --reference flag and the equivalent Singularity
+# bind-mount workflow, where the user extracts one organism from a preditr-ref
+# image and points PrEditR straight at it.
+#
+# Returns list(organism = <id from manifest>, references_path = <parent dir>).
+# The downstream resolvers (loadReference / referenceMapsDir) key maps off
+# <references_path>/<organism>/..., so the payload directory name MUST equal the
+# manifest organism_id; we validate that and fail loudly otherwise.
+resolveSinglePayload <- function(reference_dir) {
+  reference_dir <- normalizePath(reference_dir, mustWork = FALSE)
+  if (!dir.exists(reference_dir)) {
+    stop(sprintf("--reference directory does not exist: %s", reference_dir))
+  }
+  manifest <- readReferenceManifest(file.path(reference_dir, "preditr_reference.json"))
+  if (is.null(manifest)) {
+    stop(sprintf(
+      "No usable preditr_reference.json in --reference directory '%s'. Point --reference at the folder that directly contains the manifest.",
+      reference_dir))
+  }
+  organism <- manifest$organism_id
+  if (!identical(basename(reference_dir), organism)) {
+    stop(sprintf(
+      paste0("--reference directory name ('%s') must equal the organism id ('%s') from its manifest, ",
+             "because reference maps are resolved as <parent>/%s/maps. Rename the directory to '%s', ",
+             "or use --references_path with a base directory instead."),
+      basename(reference_dir), organism, organism, organism))
+  }
+  list(organism = organism, references_path = dirname(reference_dir))
+}
+
 # Directory holding one organism's ID maps (ensembl_to_uniprot.rds, etc.).
 # Prefers the reference-image location `<base>/<organism>/maps`; falls back to
 # the legacy in-repo `maps/<organism>` so the app keeps working before the

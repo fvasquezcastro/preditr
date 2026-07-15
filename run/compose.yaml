@@ -17,6 +17,54 @@ services:
     command: ["sh", "-c", "rm -rf /refs/mouse && mkdir -p /refs && cp -a /image-refs/mouse /refs/mouse"]
     restart: "no"
 
+  refs-yeast:
+    image: fvasquezcastro/preditr-ref:yeast-saccer3
+    platform: linux/amd64
+    volumes:
+      - preditr_refs:/refs
+    command: ["sh", "-c", "rm -rf /refs/yeast && mkdir -p /refs && cp -a /image-refs/yeast /refs/yeast"]
+    restart: "no"
+
+  refs-rat:
+    image: fvasquezcastro/preditr-ref:rat-rn7
+    platform: linux/amd64
+    volumes:
+      - preditr_refs:/refs
+    command: ["sh", "-c", "rm -rf /refs/rat && mkdir -p /refs && cp -a /image-refs/rat /refs/rat"]
+    restart: "no"
+
+  refs-zebrafish:
+    image: fvasquezcastro/preditr-ref:zebrafish-danrer11
+    platform: linux/amd64
+    volumes:
+      - preditr_refs:/refs
+    command: ["sh", "-c", "rm -rf /refs/zebrafish && mkdir -p /refs && cp -a /image-refs/zebrafish /refs/zebrafish"]
+    restart: "no"
+
+  refs-fruitfly:
+    image: fvasquezcastro/preditr-ref:fruitfly-dm6
+    platform: linux/amd64
+    volumes:
+      - preditr_refs:/refs
+    command: ["sh", "-c", "rm -rf /refs/fruitfly && mkdir -p /refs && cp -a /image-refs/fruitfly /refs/fruitfly"]
+    restart: "no"
+
+  refs-celegans:
+    image: fvasquezcastro/preditr-ref:celegans-ce11
+    platform: linux/amd64
+    volumes:
+      - preditr_refs:/refs
+    command: ["sh", "-c", "rm -rf /refs/celegans && mkdir -p /refs && cp -a /image-refs/celegans /refs/celegans"]
+    restart: "no"
+
+  refs-chicken:
+    image: fvasquezcastro/preditr-ref:chicken-galgal6
+    platform: linux/amd64
+    volumes:
+      - preditr_refs:/refs
+    command: ["sh", "-c", "rm -rf /refs/chicken && mkdir -p /refs && cp -a /image-refs/chicken /refs/chicken"]
+    restart: "no"
+
   preditr-shiny:
     image: fvasquezcastro/preditr:1.8.0_amd64
     ports:
@@ -36,6 +84,18 @@ services:
         condition: service_completed_successfully
       refs-mouse:
         condition: service_completed_successfully
+      refs-yeast:
+        condition: service_completed_successfully
+      refs-rat:
+        condition: service_completed_successfully
+      refs-zebrafish:
+        condition: service_completed_successfully
+      refs-fruitfly:
+        condition: service_completed_successfully
+      refs-celegans:
+        condition: service_completed_successfully
+      refs-chicken:
+        condition: service_completed_successfully
 
   preditr-cli:
     image: fvasquezcastro/preditr:1.8.0_amd64
@@ -50,6 +110,18 @@ services:
       refs-human:
         condition: service_completed_successfully
       refs-mouse:
+        condition: service_completed_successfully
+      refs-yeast:
+        condition: service_completed_successfully
+      refs-rat:
+        condition: service_completed_successfully
+      refs-zebrafish:
+        condition: service_completed_successfully
+      refs-fruitfly:
+        condition: service_completed_successfully
+      refs-celegans:
+        condition: service_completed_successfully
+      refs-chicken:
         condition: service_completed_successfully
 
 volumes:
