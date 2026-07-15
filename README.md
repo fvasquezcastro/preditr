@@ -88,7 +88,12 @@ PrEditR appends the following columns to the input:
 | `protospacer_strand` | The strand of the DNA (**+** or **-**) that the protospacer sequence is on. |
 | `pam_seq` | The Protospacer Adjacent Motif (PAM) sequence. |
 | `chromosome` | The chromosome where the target sequence is located. |
-| `pam_coordinates` | The specific genomic coordinates of the PAM sequence. |
+| `pam_coordinates_start` | Genomic start coordinate (lower position) of the PAM sequence. |
+| `pam_coordinates_end` | Genomic end coordinate (higher position) of the PAM sequence. |
+| `protospacer_coordinates_start` | Genomic start coordinate (lower position) of the protospacer. |
+| `protospacer_coordinates_end` | Genomic end coordinate (higher position) of the protospacer. |
+| `polyA`, `polyC`, `polyG`, `polyT` | `TRUE` if the protospacer contains a homopolymer run (≥4 nt) of the given base. A `polyT` run is a Pol III terminator that can truncate U6-driven sgRNA transcription. |
+| `startingGGGGG` | `TRUE` if the protospacer begins with a run of five G's (`GGGGG`). |
 | `mutation_type` | Classification of the intended mutation (e.g., missense, nonsense, silent). |
 | `wildtype_sequence` | Original amino acid sequence (+/- 7 AA). Target sites are identified by vertical bars. |
 | `mutant_sequence` | Resulting mutant amino acid sequence after the intended edit (+/- 7 AA). |
