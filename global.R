@@ -23,7 +23,8 @@ outputs_path <- Sys.getenv("PREDITR_OUTPUTS_PATH", unset = "tmp")
 # Empty when unset; the Compose stack sets PREDITR_REFERENCES_PATH=/refs. NOTE: the
 # app does not yet auto-discover/load organisms from this path (organism support is
 # still the hardcoded human/mouse packages baked into the app image); this exposes the
-# path for that upcoming reference-discovery layer. See references/docs/.
+# path for that upcoming reference-discovery layer. The reference images that
+# populate this path are built in the separate preditr_ref repo.
 references_path <- Sys.getenv("PREDITR_REFERENCES_PATH", unset = "")
 
 # Initialize global variables

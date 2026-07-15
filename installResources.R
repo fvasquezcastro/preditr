@@ -34,8 +34,8 @@ BiocManager::install("AnnotationHub", ask = FALSE, update = FALSE)
 
 # Genome (BSgenome) and annotation (crisprDesignData) data are no longer baked in.
 # They ship per-organism in the preditr-ref images and are loaded at runtime from
-# PREDITR_REFERENCES_PATH by functions/loadReference.R. See
-# references/docs/compose-reference-images.md.
+# PREDITR_REFERENCES_PATH by functions/loadReference.R. The reference images are
+# built in the separate preditr_ref repo (see its references/docs/).
 
 install.packages("shiny")
 install.packages("bslib")

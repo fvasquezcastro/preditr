@@ -1,10 +1,11 @@
 # App image (preditr.dockerfile: COPY . /app) should carry only the running app.
-# Genome/annotation/maps ship in the per-organism preditr-ref images and are read
-# at runtime from PREDITR_REFERENCES_PATH; build/deploy tooling is not needed in
-# the app image. See references/docs/compose-reference-images.md.
+# Genome/annotation/maps ship in the per-organism preditr-ref images (built in the
+# separate preditr_ref repo) and are read at runtime from PREDITR_REFERENCES_PATH;
+# deploy tooling (run/) is not needed in the app image.
 #
-# NOTE: the reference-image build (references/build_reference_image.sh) uses its
-# own temp build context, so it is unaffected by this file and still ships maps/.
+# maps/ and references/ are kept here defensively: they normally live in the
+# preditr_ref repo, but a local dev checkout may sync maps/ and it must stay out of
+# the image.
 
 maps/
 references/
