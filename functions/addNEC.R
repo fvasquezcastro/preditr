@@ -131,6 +131,14 @@ addNEC <- function(output, editors_path, non_targeting_controls, flanking5, flan
   #}
   
   
+  # Genomic PAM/protospacer coordinates for every non-editing-control guide.
+  nec_coords <- calculateGuideCoordinates(
+    pam_site = all_nec_guides$pam_site,
+    strand = as.character(BiocGenerics::strand(all_nec_guides)),
+    spacer_len = nchar(as.character(all_nec_guides$protospacer)),
+    pam_len = nchar(as.character(all_nec_guides$pam))
+  )
+
   # Combine everything into a data frame containing ONLY not-targeting guides
   nec_df <- data.frame(
     query_num = rep("", length(all_nec_guides)),
@@ -147,7 +155,15 @@ addNEC <- function(output, editors_path, non_targeting_controls, flanking5, flan
     protospacer_strand = as.character(BiocGenerics::strand(all_nec_guides)),
     pam_seq = as.character(all_nec_guides$pam),
     chromosome = as.character(BiocGenerics::seqnames(all_nec_guides)),
-    pam_coordinates = as.character(all_nec_guides$pam_site),
+    pam_coordinates_start = as.character(nec_coords$pam_start),
+    pam_coordinates_end = as.character(nec_coords$pam_end),
+    protospacer_coordinates_start = as.character(nec_coords$protospacer_start),
+    protospacer_coordinates_end = as.character(nec_coords$protospacer_end),
+    polyA = as.character(all_nec_guides$polyA),
+    polyC = as.character(all_nec_guides$polyC),
+    polyG = as.character(all_nec_guides$polyG),
+    polyT = as.character(all_nec_guides$polyT),
+    startingGGGGG = as.character(all_nec_guides$startingGGGGG),
     mutation_type = paste0("not_editing_", all_nec_guides$intron_exon),
     wildtype_sequence = rep("", length(all_nec_guides)),
     mutant_sequence = rep("", length(all_nec_guides)),

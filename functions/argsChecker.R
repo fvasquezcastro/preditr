@@ -183,7 +183,10 @@ argsChecker <- function(input, job_name, editors, output, organism, tmp,
   
   #Check that the input file does not contain columns that are reserved for the output
   output_columns <- c("query_num", "gene_strand", "protospacer_seq", "percent_gc", "pam_seq", "protospacer_strand",
-                      "chromosome", "pam_coordinates", "mutation_type", "wildtype_sequence",
+                      "chromosome", "pam_coordinates_start", "pam_coordinates_end",
+                      "protospacer_coordinates_start", "protospacer_coordinates_end",
+                      "polyA", "polyC", "polyG", "polyT", "startingGGGGG",
+                      "mutation_type", "wildtype_sequence",
                       "mutant_sequence", "edits","warnings", "error", "EcoRI", "KpnI", "BsmbI", "BsaI", "BbsI", "PacI",
                       "MluI", "alignments_n0", "alignments_n1", "alignments_n2", "alignments_n3",
                       "alignments_n4", "alignments_n5", "alignments_n6", "alignments_n7", "alignments_n8",

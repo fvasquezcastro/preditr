@@ -411,7 +411,11 @@ ui <- navbarPage(
           data.frame(
             `Column` = c(
               "query_num","gene_strand", "sgRNA_seq", "percent_gc", "sgRNA_strand",
-              "pam_seq", "chromosome", "pam_coordinates", "mutation_type",
+              "pam_seq", "chromosome",
+              "pam_coordinates_start", "pam_coordinates_end",
+              "protospacer_coordinates_start", "protospacer_coordinates_end",
+              "polyA / polyC / polyG / polyT", "startingGGGGG",
+              "mutation_type",
               "wildtype_sequence", "mutant_sequence", "edits", "warnings", "error",
               "Restriction Enzymes", "Off-Target Alignments (n#)"
             ),
@@ -423,7 +427,12 @@ ui <- navbarPage(
               "Strand of the sgRNA (+ or -).",
               "PAM sequence recognized for targeting. (5'->3')",
               "Gene chromosome",
-              "Genomic coordinates of the PAM sequence.",
+              "Genomic start coordinate (lower position) of the PAM sequence.",
+              "Genomic end coordinate (higher position) of the PAM sequence.",
+              "Genomic start coordinate (lower position) of the protospacer (sgRNA target).",
+              "Genomic end coordinate (higher position) of the protospacer (sgRNA target).",
+              "TRUE if the sgRNA contains a homopolymer run (>=4 nt) of A, C, G, or T, respectively. A poly(T) run is a Pol III terminator that can truncate U6-driven sgRNA transcription.",
+              "TRUE if the sgRNA begins with a run of five G's (GGGGG).",
               "Type of predicted mutation (missense, nonsense, silent, etc.) assuming that any editable base in the edit window will be edited (100% editing efficiency for the edit window).",
               "Wild-type amino acid sequence around the target site (±7 residues). Vertical bars indicate the amino acids whose codons, fully or in part, fall within the edit window.",
               "Mutant amino acid sequence after editing (±7 residues).",
