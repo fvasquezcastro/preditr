@@ -45,6 +45,11 @@ Options:
   --allow-missing-maps         Build the reference payload even when maps/<organism>
                                is absent (sets PREDITR_ALLOW_MISSING_MAPS=TRUE). The genome
                                and annotation are still validated; add maps and rebuild later.
+  --standard-chrom-only VALUE  true|false. For txdb2grangeslist builds, controls the
+                               standardChromOnly argument to crisprDesign::TxDb2GRangesList.
+                               Default true. Set false for organisms whose species lacks a
+                               GenomeInfoDb UCSC seqlevels-style entry (e.g. zebrafish,
+                               chicken), which otherwise fail in keepStandardChromosomes().
   --push                       Push the built image.
   --no-cache                   Build without cache.
   --dry-run                    Print generated Dockerfile and docker command only.
@@ -80,6 +85,7 @@ NO_CACHE="false"
 DRY_RUN="false"
 ALLOW_NON_BUILTIN="false"
 ALLOW_MISSING_MAPS="false"
+STANDARD_CHROM_ONLY="true"
 PACKAGES=()
 CRAN_PACKAGES=()
 GITHUB_PACKAGES=()
@@ -162,6 +168,10 @@ while [[ $# -gt 0 ]]; do
       ALLOW_MISSING_MAPS="true"
       shift
       ;;
+    --standard-chrom-only)
+      STANDARD_CHROM_ONLY="$2"
+      shift 2
+      ;;
     --push)
       PUSH="true"
       shift
@@ -221,6 +231,11 @@ fi
 
 if [[ "${ANNOTATION_TRANSFORM}" != "none" && "${ANNOTATION_TRANSFORM}" != "txdb2grangeslist" ]]; then
   echo "--annotation-transform must be either none or txdb2grangeslist." >&2
+  exit 1
+fi
+
+if [[ "${STANDARD_CHROM_ONLY}" != "true" && "${STANDARD_CHROM_ONLY}" != "false" ]]; then
+  echo "--standard-chrom-only must be either true or false." >&2
   exit 1
 fi
 
@@ -292,6 +307,15 @@ if [[ "${ALLOW_MISSING_MAPS}" == "true" ]]; then
   COMPAT_ENV+="ENV PREDITR_ALLOW_MISSING_MAPS=TRUE"$'\n'
 fi
 
+# The TxDb2GRangesList call for the rds/txdb2grangeslist path. standardChromOnly=FALSE
+# skips GenomeInfoDb::keepStandardChromosomes(species=...), which fails for species with
+# no UCSC seqlevels-style entry (e.g. Danio rerio, Gallus gallus).
+if [[ "${STANDARD_CHROM_ONLY}" == "false" ]]; then
+  TXDB2GRL_CALL='crisprDesign::TxDb2GRangesList(txdb, standardChromOnly = FALSE)'
+else
+  TXDB2GRL_CALL='crisprDesign::TxDb2GRangesList(txdb)'
+fi
+
 cp "${SCRIPT_DIR}/check_reference_compatibility.R" "${BUILD_DIR}/check_reference_compatibility.R"
 mkdir -p "${BUILD_DIR}/maps"
 if [[ -d "${REPO_ROOT}/maps/${ORGANISM}" ]]; then
@@ -344,13 +368,18 @@ RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); build_
 # than the shipped rlib.
 RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); gh <- c(${GITHUB_PACKAGES_R}); if (length(gh) > 0) { if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes"); remotes::install_github(gh, upgrade = "never") }'
 
-RUN Rscript -e '.libPaths(c(Sys.getenv("PREDITR_REFERENCE_RLIB"), .libPaths())); if (identical(Sys.getenv("ANNOTATION_LOADER"), "rds")) { load_source <- function() { if (identical(Sys.getenv("ANNOTATION_SOURCE_LOADER"), "data")) { env <- new.env(parent = emptyenv()); utils::data(list = Sys.getenv("ANNOTATION_OBJECT"), package = Sys.getenv("ANNOTATION_PACKAGE"), envir = env); env[[Sys.getenv("ANNOTATION_OBJECT")]] } else { getExportedValue(Sys.getenv("ANNOTATION_PACKAGE"), Sys.getenv("ANNOTATION_OBJECT")) } }; txdb <- load_source(); if (identical(Sys.getenv("ANNOTATION_TRANSFORM"), "txdb2grangeslist")) { txdb <- crisprDesign::TxDb2GRangesList(txdb) }; rds_path <- file.path(Sys.getenv("PREDITR_REFERENCE_DIR"), Sys.getenv("ANNOTATION_RDS_PATH")); dir.create(dirname(rds_path), recursive = TRUE, showWarnings = FALSE); saveRDS(txdb, rds_path) }'
+RUN Rscript -e '.libPaths(c(Sys.getenv("PREDITR_REFERENCE_RLIB"), .libPaths())); if (identical(Sys.getenv("ANNOTATION_LOADER"), "rds")) { load_source <- function() { if (identical(Sys.getenv("ANNOTATION_SOURCE_LOADER"), "data")) { env <- new.env(parent = emptyenv()); utils::data(list = Sys.getenv("ANNOTATION_OBJECT"), package = Sys.getenv("ANNOTATION_PACKAGE"), envir = env); env[[Sys.getenv("ANNOTATION_OBJECT")]] } else { getExportedValue(Sys.getenv("ANNOTATION_PACKAGE"), Sys.getenv("ANNOTATION_OBJECT")) } }; txdb <- load_source(); if (identical(Sys.getenv("ANNOTATION_TRANSFORM"), "txdb2grangeslist")) { txdb <- ${TXDB2GRL_CALL} }; rds_path <- file.path(Sys.getenv("PREDITR_REFERENCE_DIR"), Sys.getenv("ANNOTATION_RDS_PATH")); dir.create(dirname(rds_path), recursive = TRUE, showWarnings = FALSE); saveRDS(txdb, rds_path) }'
 
 RUN Rscript -e 'ref_dir <- Sys.getenv("PREDITR_REFERENCE_DIR"); manifest <- file.path(ref_dir, "preditr_reference.json"); packages <- c(${PACKAGES_R}); annotation_path_line <- if (identical(Sys.getenv("ANNOTATION_LOADER"), "rds")) paste0("  \\"annotation_path\\": \\"", Sys.getenv("ANNOTATION_RDS_PATH"), "\\"", ",") else NULL; lines <- c("{", "  \\"schema_version\\": \\"0.1\\",", paste0("  \\"organism_id\\": \\"", Sys.getenv("ORGANISM"), "\\"", ","), paste0("  \\"organism_label\\": \\"", Sys.getenv("ORGANISM_LABEL"), "\\"", ","), paste0("  \\"genome_build\\": \\"", Sys.getenv("GENOME_BUILD"), "\\"", ","), "  \\"reference_kind\\": \\"bioconductor_packages\\",", "  \\"bioconductor_version\\": \\"${BIOC_VERSION}\\",", "  \\"r_library_path\\": \\"rlib\\",", paste0("  \\"genome_package\\": \\"", Sys.getenv("GENOME_PACKAGE"), "\\"", ","), paste0("  \\"annotation_package\\": \\"", Sys.getenv("ANNOTATION_PACKAGE"), "\\"", ","), paste0("  \\"annotation_object\\": \\"", Sys.getenv("ANNOTATION_OBJECT"), "\\"", ","), paste0("  \\"annotation_loader\\": \\"", Sys.getenv("ANNOTATION_LOADER"), "\\"", ","), paste0("  \\"annotation_source_loader\\": \\"", Sys.getenv("ANNOTATION_SOURCE_LOADER"), "\\"", ","), paste0("  \\"annotation_transform\\": \\"", Sys.getenv("ANNOTATION_TRANSFORM"), "\\"", ","), annotation_path_line, "  \\"packages\\": [", paste0("    ", paste(sprintf("\\"%s\\"", packages), collapse = ",\\n    ")), "  ]", "}"); writeLines(lines, manifest)'
 
 RUN Rscript -e '.libPaths(c(Sys.getenv("PREDITR_REFERENCE_RLIB"), .libPaths())); pkgs <- installed.packages(lib.loc = Sys.getenv("PREDITR_REFERENCE_RLIB")); utils::write.table(as.data.frame(pkgs[, c("Package", "Version", "LibPath")]), file = file.path(Sys.getenv("PREDITR_REFERENCE_DIR"), "installed_packages.tsv"), sep = "\\t", quote = FALSE, row.names = FALSE)'
 
 RUN Rscript -e 'loader <- c("load_preditr_reference_payload <- function(reference_dir) {", "  manifest <- jsonlite::fromJSON(file.path(reference_dir, \\"preditr_reference.json\\"))", "  .libPaths(c(file.path(reference_dir, manifest\$r_library_path), .libPaths()))", "  requireNamespace(manifest\$genome_package, quietly = FALSE)", "  requireNamespace(manifest\$annotation_package, quietly = FALSE)", "  if (identical(manifest\$annotation_loader, \\"data\\")) {", "    env <- new.env(parent = emptyenv())", "    utils::data(list = manifest\$annotation_object, package = manifest\$annotation_package, envir = env)", "    txdb <- env[[manifest\$annotation_object]]", "  } else if (identical(manifest\$annotation_loader, \\"package-object\\")) {", "    txdb <- getExportedValue(manifest\$annotation_package, manifest\$annotation_object)", "  } else if (identical(manifest\$annotation_loader, \\"rds\\")) {", "    txdb <- readRDS(file.path(reference_dir, manifest\$annotation_path))", "  } else {", "    stop(\\"Unsupported annotation_loader: \\", manifest\$annotation_loader)", "  }", "  list(manifest = manifest, txdb = txdb, genome_package = manifest\$genome_package)", "}"); writeLines(loader, file.path(Sys.getenv("PREDITR_REFERENCE_DIR"), "reference_loader.R"))'
+
+# Embed the exact Dockerfile used to build this reference into the payload, so each
+# image self-documents how it was produced (organisms needing the seqstyle workaround
+# ship a different Dockerfile than the standard ones).
+COPY reference.Dockerfile /image-refs/${ORGANISM}/Dockerfile
 
 ${COMPAT_ENV}COPY check_reference_compatibility.R /tmp/check_reference_compatibility.R
 COPY maps /tmp/preditr-maps
@@ -368,6 +397,10 @@ FROM debian:stable-slim
 COPY --from=builder /image-refs/${ORGANISM} /image-refs/${ORGANISM}
 CMD ["sh", "-c", "rm -rf /refs/${ORGANISM} && mkdir -p /refs && cp -a /image-refs/${ORGANISM} /refs/${ORGANISM}"]
 DOCKERFILE
+
+# Provide the generated Dockerfile to the build context so the COPY step above can
+# embed it into the image at /image-refs/<organism>/Dockerfile.
+cp "${DOCKERFILE}" "${BUILD_DIR}/reference.Dockerfile"
 
 docker_cmd=(docker)
 if [[ -n "${DOCKER_CONTEXT_NAME}" ]]; then

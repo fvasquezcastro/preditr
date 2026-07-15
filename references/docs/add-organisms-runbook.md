@@ -8,40 +8,46 @@ they are supplied separately and added by rebuilding later.
 Read `references/docs/compose-reference-images.md` first for the overall design and
 the reference-image contract. This file is the operational how-to.
 
-## Status (2026-07-14: all 7 attempted — 4 built & pushed, 3 failed)
+## Status (2026-07-14: all 7 attempted — 6 built & pushed, 1 failed)
 
-All 7 rows were built in parallel on the Docker Build Cloud builder and pushed to Docker
-Hub. **The BSgenome + TxDb package names in `reference_organisms.tsv` are all valid for
-Bioc 3.19** — every genome/annotation package installed cleanly. The 3 failures all die at
-the same step: `crisprDesign::TxDb2GRangesList()` (the raw-TxDb → `GRangesList` transform).
+All 7 rows were built on the Docker Build Cloud builder and pushed to Docker Hub. **The
+BSgenome + TxDb package names in `reference_organisms.tsv` are all valid for Bioc 3.19** —
+every genome/annotation package installed cleanly. Both remaining failure modes live in the
+same step, `crisprDesign::TxDb2GRangesList()` (the raw-TxDb → `GRangesList` transform):
+the seqstyle-registry gap (zebrafish, chicken) is now **fixed**; the biomaRt gap
+(arabidopsis) still blocks it.
 
 Built, pushed, and verified (manifest + `annotation/txdb.rds` present):
 
-| organism  | image                                          | size    |
-|-----------|------------------------------------------------|---------|
-| yeast     | `fvasquezcastro/preditr-ref:yeast-saccer3`     | 478 MB  |
-| rat       | `fvasquezcastro/preditr-ref:rat-rn7`           | 1.77 GB |
-| fruitfly  | `fvasquezcastro/preditr-ref:fruitfly-dm6`      | 552 MB  |
-| celegans  | `fvasquezcastro/preditr-ref:celegans-ce11`     | 532 MB  |
+| organism  | image                                          | size    | note |
+|-----------|------------------------------------------------|---------|------|
+| yeast     | `fvasquezcastro/preditr-ref:yeast-saccer3`     | 478 MB  | leaner rebuild (was ~689 MB) |
+| rat       | `fvasquezcastro/preditr-ref:rat-rn7`           | 1.77 GB | |
+| fruitfly  | `fvasquezcastro/preditr-ref:fruitfly-dm6`      | 552 MB  | |
+| celegans  | `fvasquezcastro/preditr-ref:celegans-ce11`     | 532 MB  | |
+| zebrafish | `fvasquezcastro/preditr-ref:zebrafish-danrer11`| 1.3 GB  | seqstyle fix (`--standard-chrom-only false`) |
+| chicken   | `fvasquezcastro/preditr-ref:chicken-galgal6`   | 994 MB  | seqstyle fix (`--standard-chrom-only false`) |
 
-Failed (not pushed) — exact errors + suggested fixes in
-`references/docs/add-organisms-build-report.md`:
+**Seqstyle fix (zebrafish, chicken):** their species (*Danio rerio*, *Gallus gallus*) have
+no GenomeInfoDb UCSC seqlevels-style entry, so the default transform aborted in
+`keepStandardChromosomes(species=...) → extractSeqlevels(species,"UCSC")`. Fixed by the new
+`--standard-chrom-only false` flag, which passes `standardChromOnly = FALSE` to
+`TxDb2GRangesList` and skips that species lookup (trade-off: keeps all contigs, hence the
+larger images). These two images embed their exact Dockerfile at
+`/image-refs/<org>/Dockerfile`; the two canonical recipes are committed under
+`references/dockerfiles/` (see its README).
+
+Still failing (not pushed):
 
 | organism    | failure in `TxDb2GRangesList()`                                              |
 |-------------|------------------------------------------------------------------------------|
-| zebrafish   | `extractSeqlevels("Danio rerio","UCSC")` — no GenomeInfoDb UCSC seqstyle entry |
-| chicken     | `extractSeqlevels("Gallus gallus","UCSC")` — same seqstyle-registry gap        |
-| arabidopsis | `.getBiomartData` — "Organism 'Arabidopsis thaliana' not recognized in biomaRt" |
+| arabidopsis | `.getBiomartData` — "Organism 'Arabidopsis thaliana' not recognized in biomaRt" (plant; Ensembl Plants mart). Different cause; not addressed by the seqstyle fix. |
 
-The 4 that pass do so because their species have both a GenomeInfoDb UCSC seqstyle entry
-and a biomaRt-recognized organism (the transform enriches gene symbols via a build-time
-biomaRt call). See `references/docs/add-organisms-build-report.md` for exact error text,
-per-organism detail, and suggested fixes.
+See `references/docs/add-organisms-build-report.md` for exact error text and per-organism
+detail.
 
-- **yeast** rebuilt leaner than the earlier local image (478 MB vs ~689 MB) — build-only
-  deps (`crisprDesign`, source TxDb) are correctly kept out of the shipped `rlib`.
-- All 7 rows remain `enabled=false` on purpose (see "Why enabled=false"). The 3 failing
-  organisms need a `TxDb2GRangesList` transform change, not a TSV package-name change.
+- All 7 rows remain `enabled=false` on purpose (see "Why enabled=false"). Arabidopsis needs
+  a biomaRt/OrgDb transform change, not a TSV package-name change.
 
 ## What was already changed in the repo
 
@@ -165,6 +171,18 @@ Read `"$LOGDIR/<organism>.log"`. Most likely causes and fixes:
 - **CDS/genome seqname mismatch** (e.g. Ensembl-vs-UCSC chromosome naming). Prefer a TxDb
   whose seqnames match the chosen BSgenome (both UCSC), or add a seqlevels-style fix to the
   transform.
+- **`extractSeqlevels(species, "UCSC")` has no compatible entry** (ERROR in
+  `TxDb2GRangesList` → `keepStandardChromosomes` → `standardChromosomes`). The species has
+  no GenomeInfoDb UCSC seqlevels-style entry (seen for *Danio rerio*/zebrafish and
+  *Gallus gallus*/chicken). Rebuild that organism with `--standard-chrom-only false`, which
+  passes `standardChromOnly = FALSE` to `TxDb2GRangesList` and skips the species lookup
+  (keeps all contigs). See `references/dockerfiles/seqstyle-fix.Dockerfile`.
+- **`.getBiomartData ... not recognized in biomaRt`** (ERROR in `TxDb2GRangesList`). The
+  transform enriches gene symbols via a live Ensembl biomaRt call; some organisms (e.g.
+  *Arabidopsis thaliana*, on the Ensembl Plants mart) are not on the default mart. No flag
+  yet — needs a transform that sources symbols from the organism OrgDb or the correct mart.
+  (Also a transient Ensembl outage can produce a "service currently unavailable" variant —
+  just retry.)
 
 ## Adding maps later (no rebuild of the heavy layers)
 
