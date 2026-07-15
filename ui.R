@@ -313,7 +313,7 @@ ui <- navbarPage(
         # --- Input Parameters ---
         div(class = "subsection-title", "Input Parameters"),
         tags$ul(
-          tags$li(HTML("<b>Organism:</b> Select <i>Human</i> or <i>Mouse</i>.")),
+          tags$li(HTML("<b>Organism:</b> Select the target organism. The list is populated from the reference sets installed on this server.")),
           tags$li(HTML("<b>Job Name:</b> An identifier for your run; used in output file names.")),
           tags$li(HTML("<b>Threads:</b> Number of parallel processes (default: 2). Increase only for large runs and if sufficient RAM is available.")),
           tags$li(HTML("<b>Off-Target Search:</b> Optional. Set to TRUE to search for potential off-target sites.")),

@@ -20,7 +20,12 @@ parseArguments <- function(){
                        type = "character",
                        default = "FALSE")
   
-  args <- argparser::add_argument(args, "--organism", help = "Accepted values: human, mouse",
+  args <- argparser::add_argument(args, "--organism",
+                       help = "Organism id of the reference to use (e.g. human, mouse, yeast, rat,
+                     zebrafish, fruitfly, celegans, chicken). Must match an organism installed
+                     under --references_path. Optional when --reference is given (the id is then
+                     read from that payload's manifest). Run with --list_organisms to see what is
+                     installed.",
                        type = "character")
   
   args <- argparser::add_argument(args, "--off_targets", help = "Indicates if PrEditR should search for potential off-targets",
@@ -67,6 +72,16 @@ parseArguments <- function(){
                      PREDITR_REFERENCES_PATH environment variable. Defaults to /refs.",
                        type = "character", default = "")
 
+  args <- argparser::add_argument(args, "--reference",
+                       help = "Path to a SINGLE organism's reference payload directory (the folder
+                     that directly contains preditr_reference.json, e.g. a bind-mounted /refs/human
+                     staged from a preditr-ref image). Convenience alternative to
+                     --references_path + --organism: the organism id is read from the payload's
+                     manifest, so --organism may be omitted. The directory name must equal the
+                     organism id. Works identically under Docker and Singularity since it is just a
+                     filesystem path.",
+                       type = "character", default = "")
+
   args <- argparser::add_argument(args, "--list_organisms", flag = TRUE,
                        help = "List the organisms available under --references_path and exit.")
 
@@ -90,6 +105,7 @@ parseArguments <- function(){
     non_editing_controls = parsed_args$non_editing_controls,
     tmp = parsed_args$tmp,
     references_path = parsed_args$references_path,
+    reference = parsed_args$reference,
     list_organisms = parsed_args$list_organisms
   ))
 }
