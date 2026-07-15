@@ -25,6 +25,13 @@ All 6 OK images verified: manifest well-formed, `annotation/txdb.rds` present (G
 fixed images additionally embed their exact Dockerfile at `/image-refs/<org>/Dockerfile`
 (showing `TxDb2GRangesList(txdb, standardChromOnly = FALSE)`).
 
+All six built rows stay `enabled=false`, so `run/generate_reference_compose.sh` still emits
+only human + mouse. The immediate blocker is the **missing map files**: these images were
+built with `--allow-missing-maps` and ship no `maps/<organism>/` ID-mapping tables, so they
+cannot resolve UniProt/Ensembl targets at runtime. Add maps and rebuild (see the runbook's
+"Adding maps later") before enabling them. The generic reference adapter is a separate,
+still-pending prerequisite.
+
 ## Cross-cutting finding
 
 All 3 failures die at the SAME Dockerfile step (builder 8/16), inside

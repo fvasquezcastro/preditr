@@ -46,8 +46,12 @@ Skipped (not built, not pushed):
 See `references/docs/add-organisms-build-report.md` for the full analysis and a sketch of a
 bespoke transform that could fix it later.
 
-- All 7 rows remain `enabled=false` on purpose (see "Why enabled=false"). Arabidopsis was
-  skipped and needs a new custom-transform path, not a TSV package-name change.
+- All 7 rows remain `enabled=false` on purpose. The immediate reason the six built images
+  stay disabled is that **their map files are missing** — they were built with
+  `--allow-missing-maps`, so ID mapping would not work at runtime (plus the app still lacks
+  a generic reference adapter). See "Why enabled=false". So `run/compose.yaml` regenerates
+  with only human + mouse. Arabidopsis was skipped and additionally needs a new
+  custom-transform path, not a TSV package-name change.
 
 ## What was already changed in the repo
 
@@ -211,6 +215,14 @@ These need a generic reference adapter (scan `/refs/*/preditr_reference.json`, a
 manifest's `rlib` to `.libPaths()`, load genome package + `txdb.rds`) before a new organism
 can actually run in the app. Until then keep the new rows `enabled=false`; the Compose
 generator (`run/generate_reference_compose.sh`) only wires `enabled=true` organisms.
+
+**Also: the built images have no map files yet.** All six were built with
+`--allow-missing-maps` (there is no `maps/<organism>/` in the repo), so their reference
+directories ship without the ID-mapping tables (`uniprot_to_ensembl.rds`,
+`ensembl_to_uniprot.rds`, `has_isoforms.rds`). PrEditR's core input is a UniProt/Ensembl ID,
+so without these maps the organism cannot resolve targets at runtime. This alone is reason
+to keep the rows `enabled=false` until maps are supplied (see "Adding maps later"), even
+before the generic adapter lands.
 
 ## Publishing images
 
