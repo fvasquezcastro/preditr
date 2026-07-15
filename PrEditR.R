@@ -227,6 +227,13 @@ runPrEditR <- function(
     }
   )
   full_txdb <- organism_ref$txdb
+  # Keep the BSgenome object available in the top-level scope. Workers materialize
+  # their own copy from the package name (see worker_fun), but generateOutput() ->
+  # addNEC() needs the object here. It was previously only assigned inside the
+  # `if (off_targets) { if (shiny) ... }` branch, so any run with off-targets off
+  # (all CLI runs, hosted Shiny without off-targets) left it undefined and crashed
+  # when non-editing controls forced it.
+  genome <- organism_ref$genome
   genome_pkg <- if (!is.null(organism_ref$manifest) && !is.null(organism_ref$manifest$genome_package)) {
     organism_ref$manifest$genome_package
   } else if (organism == "human") {
@@ -247,6 +254,11 @@ runPrEditR <- function(
     tss         = full_txdb$tss[full_txdb$tss$tx_id %in% keep_tx]
   )
   small_txdb <- GenomicRanges::GRangesList(small_txdb, compress=TRUE)
+  # Default the top-level txdb to the job-filtered annotation. Like `genome` above,
+  # `txdb` is passed to findOffTargets()/generateOutput()->addNEC() but was only
+  # assigned in the `if (off_targets) { if (shiny) ... }` branch; the shiny+off-target
+  # branch still reassigns the freshly reloaded annotation below.
+  txdb <- small_txdb
   rm(full_txdb, organism_ref)
   
   rm(trimmed_ensembl_ids, uniprot2ensembl_ids, ensembl2uniprot_ids, 
