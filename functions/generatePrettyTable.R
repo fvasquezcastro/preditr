@@ -25,21 +25,23 @@ generatePrettyTable <- function(results_df, organism, job_name, output_folder){
         %s</a>',
       results_df$gene_symbol, results_df$gene_symbol
     )
-  } else {
-    # Map Ensembl IDs to MGI IDs
+  } else if (organism == "mouse") {
+    # Map Ensembl IDs to MGI IDs. Only mouse ships an ensembl_to_mgi.rds map, and
+    # mapEnsembl2MGI() reads it unconditionally, so this branch must stay mouse-only;
+    # any other organism falls through to the generic pill below.
     mgi_ids <- mapEnsembl2MGI(results_df$ensembl_id, organism)
-    
+
     # Create the MGI link only if a valid ID was found
     results_df$gene_symbol <- vapply(
       seq_along(results_df$gene_symbol),
       function(i) {
         gene <- results_df$gene_symbol[i]
         mgi_id <- mgi_ids[i]
-        
+
         if (!is.na(mgi_id) && mgi_id != "") {
           sprintf(
-            '<a href="https://www.informatics.jax.org/marker/%s" 
-              target="_blank" 
+            '<a href="https://www.informatics.jax.org/marker/%s"
+              target="_blank"
               style="background-color:#E4EFFD;
                      padding:2px 6px;
                      border-radius:8px;
@@ -54,6 +56,27 @@ generatePrettyTable <- function(results_df, organism, job_name, output_folder){
         } else {
           gene # leave plain if no valid MGI mapping
         }
+      },
+      character(1)
+    )
+  } else {
+    # Generic organism (e.g. a custom FASTA/GFF reference): no curated gene-symbol
+    # database to link to, so render a plain non-linked pill from the annotation's
+    # gene_symbol. Avoids the mouse-only mapEnsembl2MGI() path.
+    results_df$gene_symbol <- vapply(
+      results_df$gene_symbol,
+      function(gene) {
+        if (is.na(gene) || gene == "") return("")
+        sprintf(
+          '<span style="background-color:#0A1F4D;
+                        padding:2px 6px;
+                        border-radius:8px;
+                        color:#F47B20;
+                        font-weight:600;
+                        font-size:16px;
+                        display:inline-block;">%s</span>',
+          gene
+        )
       },
       character(1)
     )

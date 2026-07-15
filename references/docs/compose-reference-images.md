@@ -338,6 +338,9 @@ The first practical milestone should include only human and mouse:
 - Shiny reference discovery from `/refs`
 
 At this stage, do not allow user-uploaded FASTA/GTF references. Keep the UI curated and predictable.
+(FASTA/GFF references are now buildable ahead of time via `--reference-kind fasta_gff` —
+see "Building a reference from a genome FASTA + annotation" below — but that is an
+operator-side image build, not a runtime upload in the Shiny UI.)
 
 ## Building a reference before its maps exist
 
@@ -370,10 +373,68 @@ Docker reuses the cached layers up to that point, so the rebuild is cheap.
 > mode) it does not.
 
 > Building the image only produces a validated reference on the shelf. The running
-> app still dispatches through `loadOrganismData.R`, `PrEditR.R`, and
-> `generatePrettyTable.R`, which are hardcoded to `human`/`mouse` (the latter calls
-> `mapEnsembl2MGI()` for every non-human organism). New-organism rows therefore stay
-> `enabled=false` in the TSV until the generic reference adapter lands.
+> app still dispatches through `loadOrganismData.R` and `PrEditR.R`. `generatePrettyTable.R`
+> is no longer a blocker: its gene-symbol linking is now `human` → GeneCards,
+> `mouse` → MGI, and every other organism → a plain (non-linked) gene-symbol pill, so
+> the mouse-only `mapEnsembl2MGI()` path is never hit for custom organisms.
+
+## Building a reference from a genome FASTA + annotation (reference-kind fasta_gff)
+
+For organisms with no suitable Bioconductor `BSgenome`/`TxDb` packages, a reference can
+be built directly from a genome **FASTA** plus an annotation **GFF3/GTF**, with an
+optional UniProt↔transcript map to enable UniProt-ID input. This is the `fasta_gff`
+reference kind of `build_reference_image.sh`:
+
+```sh
+references/build_reference_image.sh \
+  --reference-kind fasta_gff \
+  --organism newt --label "Newt" --genome-build newt1 \
+  --image fvasquezcastro/preditr-ref:newt-newt1 \
+  --genome-fasta   /data/newt.fa \
+  --annotation-gff /data/newt.gff3 \
+  --uniprot-map    /data/newt_uniprot.tsv   # optional
+```
+
+What the build does (all inside the Bioconductor builder stage, producing the **same**
+payload contract as the package path — a BSgenome package in `rlib/` plus a normalized
+`GRangesList` at `annotation/txdb.rds`):
+
+1. **Genome**: trims FASTA seqnames at the first whitespace (so `>chr1 description`
+   becomes `chr1`, matching GFF seqnames) → `rtracklayer::export.2bit` →
+   `BSgenomeForge::forgeBSgenomeDataPkgFromTwobitFile` → `R CMD INSTALL` into `rlib/`.
+   The forged package name is auto-derived from `--genome-organism`/`--provider`/
+   `--genome-build` and read back into the manifest — it is not chosen by the caller.
+2. **Annotation**: `txdbmaker::makeTxDbFromGFF(organism = NA)` →
+   `crisprDesign::TxDb2GRangesList` (respecting `--standard-chrom-only`), then a
+   normalization pass that (a) strips GFF type prefixes so `tx_id`/`gene_id` are bare
+   (e.g. `transcript:ENST…` → `ENST…`, matching the UniProt map and user input), and
+   (b) injects `gene_symbol` from the GFF `Name`/`gene_name` attribute (falling back to
+   `gene_id`), because `TxDb2GRangesList` leaves `gene_symbol` `NA` for organisms with
+   no OrgDb.
+3. **Maps** (only with `--uniprot-map`): `generate_reference_maps.R --uniprot-map`
+   builds `uniprot_to_ensembl.rds` / `ensembl_to_uniprot.rds` / `has_isoforms.rds`
+   (etc.) from the TSV, filtered to the transcripts present in the annotation.
+
+`--reference-kind fasta_gff` implies `--allow-non-builtin` (a custom organism is never
+`human`/`mouse`), and implies `--allow-missing-maps` when no `--uniprot-map` is given
+(the reference then builds without maps and UniProt-ID input is disabled; Ensembl/GFF
+transcript IDs still work).
+
+The **UniProt map TSV** has columns:
+
+| column | required | meaning |
+|---|---|---|
+| `transcript_id` | yes | matches the GFF transcript IDs (bare, no `transcript:` prefix) |
+| `uniprot_id` | yes | UniProt accession; use the `-N` isoform accession on isoform rows |
+| `is_canonical` | no | `1` for the canonical transcript of a base accession, else `0`/blank |
+| `isoform_of` | no | for isoform rows, the base Swiss-Prot accession the isoform belongs to |
+
+The resulting payload passes the unmodified `check_reference_compatibility.R` and loads
+through `loadReference()` exactly like a package-based reference. As with any new
+organism, the row stays `enabled=false` in the registry until validated in the running
+app; `reference_organisms.tsv` describes package-based organisms, so FASTA/GFF
+references are built by invoking `build_reference_image.sh` directly (they are not
+driven from the TSV).
 
 ## Expansion path
 

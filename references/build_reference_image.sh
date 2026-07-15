@@ -27,6 +27,26 @@ Options:
   --image VALUE                Docker image tag to build.
   --bioc-version VALUE         Bioconductor Docker version. Default: 3.19.
   --platform VALUE             Docker platform. Default: linux/amd64.
+  --reference-kind VALUE       bioconductor_packages (default) or fasta_gff.
+                               fasta_gff builds the reference from a user genome
+                               FASTA + annotation GFF3/GTF instead of Bioconductor
+                               genome/annotation packages.
+
+fasta_gff options (required in --reference-kind fasta_gff):
+  --genome-fasta VALUE         Path to the genome FASTA (.fa/.fa.gz). Forged into a
+                               BSgenome package with BSgenomeForge and shipped in rlib/.
+  --annotation-gff VALUE       Path to the annotation GFF3/GTF (.gff3/.gtf[.gz]).
+  --annotation-format VALUE    gff3 | gtf | auto. Default auto (inferred from extension).
+  --uniprot-map VALUE          Optional UniProt<->transcript TSV enabling UniProt-ID
+                               input. Columns: transcript_id, uniprot_id[, is_canonical,
+                               isoform_of]. When omitted, the reference builds without
+                               maps (UniProt-ID input disabled) and --allow-missing-maps
+                               is implied.
+  --genome-organism VALUE      Binomial ("Genus species") used only to name the forged
+                               BSgenome package. Default: --label.
+  --provider VALUE             Provider token in the forged package name. Default: custom.
+
+bioconductor_packages options:
   --genome-package VALUE       R package containing the BSgenome object.
   --annotation-package VALUE   R package containing the source annotation object.
   --annotation-object VALUE    Source annotation object name.
@@ -72,6 +92,13 @@ GENOME_BUILD=""
 IMAGE=""
 BIOC_VERSION="3.19"
 PLATFORM="linux/amd64"
+REFERENCE_KIND="bioconductor_packages"
+GENOME_FASTA=""
+ANNOTATION_GFF=""
+ANNOTATION_FORMAT="auto"
+UNIPROT_MAP=""
+GENOME_ORGANISM=""
+GENOME_PROVIDER="custom"
 GENOME_PACKAGE=""
 ANNOTATION_PACKAGE=""
 ANNOTATION_OBJECT=""
@@ -114,6 +141,34 @@ while [[ $# -gt 0 ]]; do
       ;;
     --platform)
       PLATFORM="$2"
+      shift 2
+      ;;
+    --reference-kind)
+      REFERENCE_KIND="$2"
+      shift 2
+      ;;
+    --genome-fasta)
+      GENOME_FASTA="$2"
+      shift 2
+      ;;
+    --annotation-gff)
+      ANNOTATION_GFF="$2"
+      shift 2
+      ;;
+    --annotation-format)
+      ANNOTATION_FORMAT="$2"
+      shift 2
+      ;;
+    --uniprot-map)
+      UNIPROT_MAP="$2"
+      shift 2
+      ;;
+    --genome-organism)
+      GENOME_ORGANISM="$2"
+      shift 2
+      ;;
+    --provider)
+      GENOME_PROVIDER="$2"
       shift 2
       ;;
     --genome-package)
@@ -196,43 +251,27 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-required_vars=(
-  ORGANISM
-  LABEL
-  GENOME_BUILD
-  IMAGE
-  GENOME_PACKAGE
-  ANNOTATION_PACKAGE
-  ANNOTATION_OBJECT
-)
+if [[ "${REFERENCE_KIND}" != "bioconductor_packages" && "${REFERENCE_KIND}" != "fasta_gff" ]]; then
+  echo "--reference-kind must be bioconductor_packages or fasta_gff." >&2
+  exit 1
+fi
+
+# Common required options for both kinds.
+common_required=(ORGANISM LABEL GENOME_BUILD IMAGE)
+
+if [[ "${REFERENCE_KIND}" == "fasta_gff" ]]; then
+  required_vars=("${common_required[@]}" GENOME_FASTA ANNOTATION_GFF)
+else
+  required_vars=("${common_required[@]}" GENOME_PACKAGE ANNOTATION_PACKAGE ANNOTATION_OBJECT)
+fi
 
 for var_name in "${required_vars[@]}"; do
   if [[ -z "${!var_name}" ]]; then
-    echo "Missing required option for ${var_name}" >&2
+    echo "Missing required option for ${var_name} (reference-kind=${REFERENCE_KIND})" >&2
     usage >&2
     exit 1
   fi
 done
-
-if [[ "${#PACKAGES[@]}" -eq 0 ]]; then
-  echo "At least one --package is required." >&2
-  exit 1
-fi
-
-if [[ "${ANNOTATION_LOADER}" != "data" && "${ANNOTATION_LOADER}" != "package-object" && "${ANNOTATION_LOADER}" != "rds" ]]; then
-  echo "--annotation-loader must be data, package-object, or rds." >&2
-  exit 1
-fi
-
-if [[ "${ANNOTATION_SOURCE_LOADER}" != "data" && "${ANNOTATION_SOURCE_LOADER}" != "package-object" ]]; then
-  echo "--annotation-source-loader must be either data or package-object." >&2
-  exit 1
-fi
-
-if [[ "${ANNOTATION_TRANSFORM}" != "none" && "${ANNOTATION_TRANSFORM}" != "txdb2grangeslist" ]]; then
-  echo "--annotation-transform must be either none or txdb2grangeslist." >&2
-  exit 1
-fi
 
 if [[ "${STANDARD_CHROM_ONLY}" != "true" && "${STANDARD_CHROM_ONLY}" != "false" ]]; then
   echo "--standard-chrom-only must be either true or false." >&2
@@ -240,30 +279,76 @@ if [[ "${STANDARD_CHROM_ONLY}" != "true" && "${STANDARD_CHROM_ONLY}" != "false" 
 fi
 
 CRAN_PACKAGES=("jsonlite" "${CRAN_PACKAGES[@]}")
-
-# Bioconductor packages needed only at build time to produce annotation/txdb.rds.
-# These install into the builder's default library and are NOT shipped in rlib,
-# mirroring how github packages (e.g. crisprDesignData) are treated build-only.
 BUILD_ONLY_PACKAGES=()
-if [[ "${ANNOTATION_TRANSFORM}" == "txdb2grangeslist" ]]; then
-  BUILD_ONLY_PACKAGES+=("crisprDesign")
-fi
-# When a normalized rds is shipped (annotation_loader=rds), the source annotation
-# package is only needed at build time. If it was listed among the runtime
-# packages, move it to the build-only set so it does not bloat the shipped rlib.
-if [[ "${ANNOTATION_LOADER}" == "rds" && -n "${ANNOTATION_PACKAGE}" ]]; then
-  filtered_packages=()
-  moved_annotation="false"
-  for pkg in "${PACKAGES[@]}"; do
-    if [[ "${pkg}" == "${ANNOTATION_PACKAGE}" ]]; then
-      moved_annotation="true"
-      continue
+
+if [[ "${REFERENCE_KIND}" == "fasta_gff" ]]; then
+  # Validate inputs exist on the host before assembling the build context.
+  if [[ ! -f "${GENOME_FASTA}" ]]; then
+    echo "--genome-fasta not found: ${GENOME_FASTA}" >&2
+    exit 1
+  fi
+  if [[ ! -f "${ANNOTATION_GFF}" ]]; then
+    echo "--annotation-gff not found: ${ANNOTATION_GFF}" >&2
+    exit 1
+  fi
+  if [[ -n "${UNIPROT_MAP}" && ! -f "${UNIPROT_MAP}" ]]; then
+    echo "--uniprot-map not found: ${UNIPROT_MAP}" >&2
+    exit 1
+  fi
+  # A custom FASTA/GFF organism is never one of the built-in human/mouse ids, and
+  # (unless a uniprot map is supplied) ships without ID maps. Imply the two build
+  # flags so callers don't have to remember them.
+  ALLOW_NON_BUILTIN="true"
+  if [[ -z "${UNIPROT_MAP}" ]]; then
+    ALLOW_MISSING_MAPS="true"
+  fi
+  # The forged BSgenome + the txdb2grangeslist transform need these only at build
+  # time; they install into the default library, never the shipped rlib.
+  BUILD_ONLY_PACKAGES+=("BSgenomeForge" "crisprDesign" "txdbmaker" "rtracklayer")
+else
+  if [[ "${#PACKAGES[@]}" -eq 0 ]]; then
+    echo "At least one --package is required." >&2
+    exit 1
+  fi
+
+  if [[ "${ANNOTATION_LOADER}" != "data" && "${ANNOTATION_LOADER}" != "package-object" && "${ANNOTATION_LOADER}" != "rds" ]]; then
+    echo "--annotation-loader must be data, package-object, or rds." >&2
+    exit 1
+  fi
+
+  if [[ "${ANNOTATION_SOURCE_LOADER}" != "data" && "${ANNOTATION_SOURCE_LOADER}" != "package-object" ]]; then
+    echo "--annotation-source-loader must be either data or package-object." >&2
+    exit 1
+  fi
+
+  if [[ "${ANNOTATION_TRANSFORM}" != "none" && "${ANNOTATION_TRANSFORM}" != "txdb2grangeslist" ]]; then
+    echo "--annotation-transform must be either none or txdb2grangeslist." >&2
+    exit 1
+  fi
+
+  # Bioconductor packages needed only at build time to produce annotation/txdb.rds.
+  # These install into the builder's default library and are NOT shipped in rlib,
+  # mirroring how github packages (e.g. crisprDesignData) are treated build-only.
+  if [[ "${ANNOTATION_TRANSFORM}" == "txdb2grangeslist" ]]; then
+    BUILD_ONLY_PACKAGES+=("crisprDesign")
+  fi
+  # When a normalized rds is shipped (annotation_loader=rds), the source annotation
+  # package is only needed at build time. If it was listed among the runtime
+  # packages, move it to the build-only set so it does not bloat the shipped rlib.
+  if [[ "${ANNOTATION_LOADER}" == "rds" && -n "${ANNOTATION_PACKAGE}" ]]; then
+    filtered_packages=()
+    moved_annotation="false"
+    for pkg in "${PACKAGES[@]}"; do
+      if [[ "${pkg}" == "${ANNOTATION_PACKAGE}" ]]; then
+        moved_annotation="true"
+        continue
+      fi
+      filtered_packages+=("${pkg}")
+    done
+    if [[ "${moved_annotation}" == "true" ]]; then
+      PACKAGES=("${filtered_packages[@]}")
+      BUILD_ONLY_PACKAGES+=("${ANNOTATION_PACKAGE}")
     fi
-    filtered_packages+=("${pkg}")
-  done
-  if [[ "${moved_annotation}" == "true" ]]; then
-    PACKAGES=("${filtered_packages[@]}")
-    BUILD_ONLY_PACKAGES+=("${ANNOTATION_PACKAGE}")
   fi
 fi
 
@@ -317,6 +402,98 @@ else
 fi
 
 cp "${SCRIPT_DIR}/check_reference_compatibility.R" "${BUILD_DIR}/check_reference_compatibility.R"
+
+if [[ "${REFERENCE_KIND}" == "fasta_gff" ]]; then
+  ## ---- fasta_gff build context + Dockerfile ------------------------------
+  cp "${SCRIPT_DIR}/build_reference_payload_fasta.R" "${BUILD_DIR}/build_reference_payload_fasta.R"
+  cp "${SCRIPT_DIR}/generate_reference_maps.R" "${BUILD_DIR}/generate_reference_maps.R"
+  mkdir -p "${BUILD_DIR}/inputs"
+
+  FASTA_BASE="$(basename "${GENOME_FASTA}")"
+  GFF_BASE="$(basename "${ANNOTATION_GFF}")"
+  cp "${GENOME_FASTA}" "${BUILD_DIR}/inputs/${FASTA_BASE}"
+  cp "${ANNOTATION_GFF}" "${BUILD_DIR}/inputs/${GFF_BASE}"
+  GENOME_ORGANISM_EFF="${GENOME_ORGANISM:-${LABEL}}"
+
+  # Optional maps step (only when a uniprot map is supplied).
+  MAPS_STEP=""
+  if [[ -n "${UNIPROT_MAP}" ]]; then
+    UNIPROT_BASE="$(basename "${UNIPROT_MAP}")"
+    cp "${UNIPROT_MAP}" "${BUILD_DIR}/inputs/${UNIPROT_BASE}"
+    # dplyr/data.table are used by generate_reference_maps.R; add them build-only.
+    BUILD_ONLY_PACKAGES+=("dplyr" "data.table")
+    BUILD_ONLY_PACKAGES_R="$(package_r_vector "${BUILD_ONLY_PACKAGES[@]}")"
+    MAPS_STEP=$(cat <<MAPSTEP
+RUN Rscript /tmp/generate_reference_maps.R --organism "\${ORGANISM}" --maps-dir "/tmp/preditr-maps/\${ORGANISM}" --annotation-rds "\${PREDITR_REFERENCE_DIR}/annotation/txdb.rds" --uniprot-map "/tmp/inputs/${UNIPROT_BASE}"
+RUN if [ -n "\$(ls -A /tmp/preditr-maps/\${ORGANISM} 2>/dev/null)" ]; then cp -a "/tmp/preditr-maps/\${ORGANISM}" "\${PREDITR_REFERENCE_DIR}/maps"; fi
+MAPSTEP
+)
+  fi
+
+  cat > "${DOCKERFILE}" <<DOCKERFILE
+# ---- Stage 1: builder (full R/Bioconductor) — produces /image-refs/<organism> ----
+# reference-kind: fasta_gff (genome FASTA + annotation GFF3/GTF; no Bioconductor
+# genome/annotation packages). The BSgenome package is forged from the FASTA at
+# build time; the annotation is built from the GFF with txdbmaker + crisprDesign.
+FROM bioconductor/bioconductor_docker:${BIOC_VERSION} AS builder
+
+ARG ORGANISM=${ORGANISM}
+ARG ORGANISM_LABEL="${LABEL}"
+ARG GENOME_BUILD="${GENOME_BUILD}"
+
+ENV ORGANISM=\${ORGANISM}
+ENV ORGANISM_LABEL=\${ORGANISM_LABEL}
+ENV GENOME_BUILD=\${GENOME_BUILD}
+ENV BIOC_VERSION=${BIOC_VERSION}
+ENV GENOME_FASTA=/tmp/inputs/${FASTA_BASE}
+ENV ANNOTATION_GFF=/tmp/inputs/${GFF_BASE}
+ENV ANNOTATION_FORMAT=${ANNOTATION_FORMAT}
+ENV GENOME_ORGANISM="${GENOME_ORGANISM_EFF}"
+ENV GENOME_PROVIDER="${GENOME_PROVIDER}"
+ENV STANDARD_CHROM_ONLY=${STANDARD_CHROM_ONLY}
+ENV PREDITR_REFERENCE_DIR=/image-refs/\${ORGANISM}
+ENV PREDITR_REFERENCE_RLIB=/image-refs/\${ORGANISM}/rlib
+
+RUN mkdir -p "\${PREDITR_REFERENCE_RLIB}" "\${PREDITR_REFERENCE_DIR}" "\${PREDITR_REFERENCE_DIR}/annotation" "/tmp/preditr-maps/\${ORGANISM}"
+
+RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager"); BiocManager::install(version = "${BIOC_VERSION}", ask = FALSE, update = FALSE)'
+
+# jsonlite ships in rlib so the manifest loader / compatibility check can read it.
+RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); cran_packages <- c(${CRAN_PACKAGES_R}); if (length(cran_packages) > 0) install.packages(cran_packages, lib = Sys.getenv("PREDITR_REFERENCE_RLIB"))'
+
+# Build-only packages (BSgenomeForge, crisprDesign, txdbmaker, rtracklayer, and — when
+# a uniprot map is supplied — dplyr/data.table) install into the default library, NOT
+# the shipped rlib. The forged BSgenome package is the only thing added to rlib.
+RUN Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); build_only <- c(${BUILD_ONLY_PACKAGES_R}); if (length(build_only) > 0) BiocManager::install(build_only, ask = FALSE, update = FALSE)'
+
+COPY build_reference_payload_fasta.R /tmp/build_reference_payload_fasta.R
+COPY generate_reference_maps.R /tmp/generate_reference_maps.R
+COPY inputs /tmp/inputs
+
+# Forge the BSgenome package from the FASTA, build+normalize the annotation
+# GRangesList from the GFF, and write the manifest.
+RUN Rscript /tmp/build_reference_payload_fasta.R
+
+${MAPS_STEP}
+
+# Embed the exact Dockerfile used to build this reference into the payload.
+COPY reference.Dockerfile /image-refs/${ORGANISM}/Dockerfile
+
+${COMPAT_ENV}COPY check_reference_compatibility.R /tmp/check_reference_compatibility.R
+
+RUN Rscript /tmp/check_reference_compatibility.R "\${PREDITR_REFERENCE_DIR}" /tmp/preditr-maps
+
+# Strip help/docs/vignettes/tests from the shipped rlib — not needed at runtime.
+RUN find "\${PREDITR_REFERENCE_RLIB}" -type d \( -name help -o -name html -o -name doc -o -name examples -o -name tests -o -name unitTests \) -exec rm -rf {} + 2>/dev/null || true
+
+# ---- Stage 2: minimal carrier (no R) — only the payload + a shell to copy it ----
+FROM debian:stable-slim
+COPY --from=builder /image-refs/${ORGANISM} /image-refs/${ORGANISM}
+CMD ["sh", "-c", "rm -rf /refs/${ORGANISM} && mkdir -p /refs && cp -a /image-refs/${ORGANISM} /refs/${ORGANISM}"]
+DOCKERFILE
+
+else
+  ## ---- bioconductor_packages build context + Dockerfile ------------------
 mkdir -p "${BUILD_DIR}/maps"
 if [[ -d "${REPO_ROOT}/maps/${ORGANISM}" ]]; then
   cp -a "${REPO_ROOT}/maps/${ORGANISM}" "${BUILD_DIR}/maps/${ORGANISM}"
@@ -397,6 +574,8 @@ FROM debian:stable-slim
 COPY --from=builder /image-refs/${ORGANISM} /image-refs/${ORGANISM}
 CMD ["sh", "-c", "rm -rf /refs/${ORGANISM} && mkdir -p /refs && cp -a /image-refs/${ORGANISM} /refs/${ORGANISM}"]
 DOCKERFILE
+
+fi
 
 # Provide the generated Dockerfile to the build context so the COPY step above can
 # embed it into the image at /image-refs/<organism>/Dockerfile.

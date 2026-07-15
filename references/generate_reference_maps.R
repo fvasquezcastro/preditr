@@ -26,8 +26,17 @@
 #   --biomart-dataset Optional Ensembl dataset (e.g. hsapiens_gene_ensembl). When
 #                    --biomart-export is absent, the equivalent columns are pulled
 #                    live via the biomaRt package.
+#   --uniprot-map    Optional path to a user-supplied UniProt<->transcript TSV(.gz)
+#                    for custom (FASTA/GFF) organisms with no BioMart dataset. Columns:
+#                      transcript_id  (required) - matches the GFF transcript IDs
+#                      uniprot_id     (required) - UniProt accession; use the
+#                                     "-N" isoform accession for isoform rows
+#                      is_canonical   (optional) - 1 for the canonical transcript of
+#                                     a base accession, else 0/blank
+#                      isoform_of     (optional) - for isoform rows, the base
+#                                     Swiss-Prot accession this isoform belongs to
 #
-# Exactly one of --biomart-export / --biomart-dataset must be provided.
+# Exactly one of --biomart-export / --biomart-dataset / --uniprot-map must be provided.
 #
 # Usage:
 #   Rscript references/generate_reference_maps.R \
@@ -51,12 +60,14 @@ maps_dir        <- get_arg("--maps-dir")
 annotation_rds  <- get_arg("--annotation-rds")
 biomart_export  <- get_arg("--biomart-export")
 biomart_dataset <- get_arg("--biomart-dataset")
+uniprot_map     <- get_arg("--uniprot-map")
 
 if (is.na(organism) || is.na(maps_dir) || is.na(annotation_rds)) {
   stop("Required: --organism, --maps-dir, --annotation-rds")
 }
-if (is.na(biomart_export) && is.na(biomart_dataset)) {
-  stop("Provide either --biomart-export <file> or --biomart-dataset <ensembl dataset>")
+n_sources <- sum(!is.na(biomart_export), !is.na(biomart_dataset), !is.na(uniprot_map))
+if (n_sources != 1) {
+  stop("Provide exactly one of --biomart-export <file>, --biomart-dataset <ensembl dataset>, or --uniprot-map <file>")
 }
 if (!dir.exists(maps_dir)) dir.create(maps_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -78,7 +89,30 @@ message("[", organism, "] transcripts in annotation: ", length(ensembl_ids))
 ### ------------------------------------------------------------------
 ### 2. Obtain the BioMart UniProt cross-reference table
 ### ------------------------------------------------------------------
-if (!is.na(biomart_export)) {
+if (!is.na(uniprot_map)) {
+  message("[", organism, "] reading user UniProt map: ", uniprot_map)
+  con <- if (grepl("\\.gz$", uniprot_map)) gzfile(uniprot_map) else uniprot_map
+  um <- read.table(con, header = TRUE, sep = "\t", stringsAsFactors = FALSE,
+                   colClasses = "character", na.strings = "")
+  if (!all(c("transcript_id", "uniprot_id") %in% names(um))) {
+    stop("--uniprot-map must have at least columns: transcript_id, uniprot_id")
+  }
+  if (!"is_canonical" %in% names(um)) um$is_canonical <- "0"
+  if (!"isoform_of" %in% names(um))   um$isoform_of   <- NA_character_
+  um$is_canonical[is.na(um$is_canonical)] <- "0"
+  is_isoform_row <- !is.na(um$isoform_of) & nzchar(um$isoform_of)
+  # Reshape into the same 4-column frame the BioMart paths produce, so all the
+  # downstream map construction below is shared. For an isoform row the base
+  # Swiss-Prot accession is isoform_of; for a canonical/base row it is uniprot_id.
+  biomart <- data.frame(
+    Transcript.stable.ID    = um$transcript_id,
+    UniProtKB.isoform.ID    = ifelse(is_isoform_row, um$uniprot_id, ""),
+    UniProtKB.Swiss.Prot.ID = ifelse(is_isoform_row, um$isoform_of, um$uniprot_id),
+    Ensembl.Canonical       = suppressWarnings(as.integer(um$is_canonical)),
+    stringsAsFactors = FALSE
+  )
+  biomart$Ensembl.Canonical[is.na(biomart$Ensembl.Canonical)] <- 0L
+} else if (!is.na(biomart_export)) {
   message("[", organism, "] reading BioMart export: ", biomart_export)
   con <- if (grepl("\\.gz$", biomart_export)) gzfile(biomart_export) else biomart_export
   biomart <- read.table(con, header = TRUE, sep = "\t")
