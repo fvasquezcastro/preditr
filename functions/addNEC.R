@@ -27,7 +27,7 @@ addNEC <- function(output, editors_path, non_targeting_controls, flanking5, flan
     all_editor_guides <- crisprDesign::findSpacers(dummy_seq, bsgenome = NULL, crisprNuclease = crisprBase::SpCas9)
     S4Vectors::mcols(all_editor_guides) <- cbind(
       S4Vectors::mcols(all_editor_guides),
-      DataFrame(
+      S4Vectors::DataFrame(
         editor      = character(0),
         edit_type   = character(0),
         gene_symbol = character(0),
@@ -47,12 +47,18 @@ addNEC <- function(output, editors_path, non_targeting_controls, flanking5, flan
       for (r in c("exons", "introns")) {
         
         
-        t_coordinates <- crisprDesign::queryTxObject(txObject=txdb, 
+        t_coordinates <- crisprDesign::queryTxObject(txObject=txdb,
                                        featureType=r,
                                        queryColumn="tx_id",
                                        queryValue=t)
-        
-        t_guides <- crisprDesign::findSpacers(t_coordinates, 
+
+        # Single-exon transcripts have no introns, so the intron query returns an
+        # empty GRanges; findSpacers() errors ("argument is of length zero") on it.
+        if (is.null(t_coordinates) || length(t_coordinates) == 0) {
+          next
+        }
+
+        t_guides <- crisprDesign::findSpacers(t_coordinates,
                                 bsgenome = genome,
                                 crisprNuclease = get(e))
         
@@ -154,7 +160,7 @@ addNEC <- function(output, editors_path, non_targeting_controls, flanking5, flan
     percent_gc = as.character(all_nec_guides$percentGC),
     protospacer_strand = as.character(BiocGenerics::strand(all_nec_guides)),
     pam_seq = as.character(all_nec_guides$pam),
-    chromosome = as.character(BiocGenerics::seqnames(all_nec_guides)),
+    chromosome = as.character(GenomeInfoDb::seqnames(all_nec_guides)),
     pam_coordinates_start = as.character(nec_coords$pam_start),
     pam_coordinates_end = as.character(nec_coords$pam_end),
     protospacer_coordinates_start = as.character(nec_coords$protospacer_start),
