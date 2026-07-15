@@ -378,7 +378,66 @@ Docker reuses the cached layers up to that point, so the rebuild is cheap.
 > `mouse` → MGI, and every other organism → a plain (non-linked) gene-symbol pill, so
 > the mouse-only `mapEnsembl2MGI()` path is never hit for custom organisms.
 
+## Building references with the ref-builder image (recommended)
+
+The easiest way to build a custom reference — no repo checkout, no R, no package
+installs — is the prebuilt **reference-builder image** `fvasquezcastro/preditr-ref:ref-builder`.
+The whole R/Bioconductor toolchain (BSgenomeForge, crisprDesign, txdbmaker,
+rtracklayer, dplyr, data.table, jsonlite) is baked in, so a build is one `docker run`
+that takes minutes instead of the ~30–60 min the from-scratch image build spends
+installing packages.
+
+Its **output is a payload directory**, not a Docker image: it writes `/out/<organism>/`
+(the `preditr_reference.json` manifest, `rlib/` with the forged BSgenome package,
+`annotation/txdb.rds`, and `maps/`) — exactly what the app reads via
+`PREDITR_REFERENCES_PATH`. No Docker-in-Docker or registry is involved to consume it.
+
+```sh
+docker run --rm -u "$(id -u):$(id -g)" \
+  -v /data:/in:ro -v "$PWD/refs":/out \
+  fvasquezcastro/preditr-ref:ref-builder \
+  --organism newt --label Newt --genome-build newt1 \
+  --genome-fasta /in/newt.fa \
+  --annotation-gff /in/newt.gff3 \
+  --uniprot-map /in/newt_uniprot.tsv        # optional
+```
+
+This writes `./refs/newt/`. Point the app at the base directory:
+
+```sh
+PREDITR_REFERENCES_PATH="$PWD/refs"
+```
+
+`-u "$(id -u):$(id -g)"` makes the output files host-owned rather than root-owned.
+Mount the inputs read-only (`:ro`) and the output directory read-write. Run
+`docker run --rm fvasquezcastro/preditr-ref:ref-builder --help` for all flags
+(`--annotation-format`, `--genome-organism`, `--provider`, `--standard-chrom-only`,
+`--out`); they mirror the `fasta_gff` options of `build_reference_image.sh` below.
+
+The image is published as the `ref-builder` tag of the `preditr-ref` repo (not a
+separate repo). Rebuild/push it with `references/build_builder_image.sh [--push]`; the
+build context is `references/`, and it bakes in the same `build_reference_payload_fasta.R`
+/ `generate_reference_maps.R` / `check_reference_compatibility.R` scripts the
+image-based path uses, so there is a single source of truth for how a payload is built.
+
+### Payload directory vs. reference image
+
+Both hold the *same* per-organism files. A **payload directory** is those files on
+disk, read directly via `PREDITR_REFERENCES_PATH`. A **reference image**
+(`preditr-ref:<organism>-<build>`) wraps that same directory at `/image-refs/<organism>`
+and, when run as a one-shot Compose service, copies it into the shared `/refs` volume.
+Use the payload directory for a single machine/lab; use reference images to distribute
+curated organisms to many users through `docker compose up`. To turn a payload directory
+into a reference image, wrap it with a minimal Dockerfile (`COPY <payload> /image-refs/<org>`
+plus the copy-to-`/refs` `CMD`); to go the other way, just run the reference image's copy step.
+
 ## Building a reference from a genome FASTA + annotation (reference-kind fasta_gff)
+
+The `ref-builder` image above is the recommended path. Under the hood it runs the same
+pipeline as the `fasta_gff` reference kind of `build_reference_image.sh`, documented here.
+Use `build_reference_image.sh --reference-kind fasta_gff` directly when you want the output
+packaged as a distributable **reference image** rather than a payload directory (it drives
+a full `docker build`, installing the toolchain each time):
 
 For organisms with no suitable Bioconductor `BSgenome`/`TxDb` packages, a reference can
 be built directly from a genome **FASTA** plus an annotation **GFF3/GTF**, with an
