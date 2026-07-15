@@ -5,9 +5,9 @@ Flags per organism: `--allow-non-builtin --allow-missing-maps` (no maps/<organis
 
 **Phase 1** (first pass): built all 7 with no script edits — 4 OK, 3 FAIL.
 **Phase 2** (seqstyle fix): zebrafish + chicken rebuilt with `--standard-chrom-only false`
-(new flag) — both now OK. Arabidopsis remains failing (different, biomaRt cause).
+(new flag) — both now OK. **Arabidopsis is SKIPPED** (deliberately not fixed — see below).
 
-## Results — 6 OK / 1 FAIL (after seqstyle fix)
+## Results — 6 OK / 1 SKIPPED
 
 | organism | status | image (Docker Hub) | pulled size | txdb.rds |
 |----------|--------|--------------------|-------------|----------|
@@ -17,7 +17,7 @@ Flags per organism: `--allow-non-builtin --allow-missing-maps` (no maps/<organis
 | celegans | OK (pushed, verified) | fvasquezcastro/preditr-ref:celegans-ce11 | 532 MB | 6.2 M |
 | zebrafish | OK (fixed, pushed, verified) | fvasquezcastro/preditr-ref:zebrafish-danrer11 | 1.3 GB | 6.6 M |
 | chicken | OK (fixed, pushed, verified) | fvasquezcastro/preditr-ref:chicken-galgal6 | 994 MB | 2.6 M |
-| arabidopsis | FAIL | — | — | biomaRt gap (below) |
+| arabidopsis | SKIPPED | — | — | not fixed (see below) |
 
 All 6 OK images verified: manifest well-formed, `annotation/txdb.rds` present (GRangesList),
 `maps` absent as expected (build-only mode). The compatibility check inside each build
@@ -42,7 +42,7 @@ requirements that the 4 passing organisms happen to satisfy and the 3 failing on
 
 So the current `txdb2grangeslist` path works for well-covered UCSC/Ensembl-vertebrate/fungal
 species but not for these three. The seqstyle issue (1) is fixed in Phase 2; the biomaRt
-issue (2) still blocks arabidopsis.
+issue (2) affects arabidopsis, which has been **skipped** (not fixed — see its section below).
 
 ## Phase 2 — seqstyle fix (applied)
 
@@ -80,24 +80,43 @@ in this GenomeInfoDb (Bioc 3.19), so the transform aborts. Not a package-name pr
 the TxDb + BSgenome installed fine.
 Fix applied (Phase 2): `--standard-chrom-only false`. Built, pushed, verified.
 
-### arabidopsis (TAIR9)
-Step: builder 8/16, `crisprDesign::TxDb2GRangesList(txdb)`.
-Error:
+### arabidopsis (TAIR9) — SKIPPED (not fixed)
+
+Status: intentionally skipped. No image built or pushed; the TSV row stays `enabled=false`.
+The `--standard-chrom-only false` fix does NOT help here — arabidopsis fails earlier and
+for a different reason, and has additional stacked problems beyond the reported error.
+
+Reported error (first failure), at builder step 8/16, `crisprDesign::TxDb2GRangesList(txdb)`:
 ```
 Error in .getBiomartData(txdb, organism) :
   Organism 'Arabidopsis thaliana' not recognized in biomaRt.
 Calls: <Anonymous> -> .TxDb2GRangesList -> .getBiomartData
 ```
-Cause: `TxDb2GRangesList` enriches the GRangesList by querying biomaRt for gene symbols,
-and its organism lookup does not recognize "Arabidopsis thaliana" (plant, served by a
-separate biomaRt mart — plants.ensembl.org — that crisprDesign's default path does not use).
-Also implies a build-time network call to biomaRt. TxDb + BSgenome installed fine.
-Suggested fix (later, NOT done here — would need a transform/script change):
- - Supply gene symbols from the plant OrgDb (org.At.tair.db) instead of biomaRt, i.e. a
-   custom transform that builds the GRangesList without `.getBiomartData`, or
- - Point crisprDesign at the Ensembl Plants mart for Arabidopsis.
-Note: TAIR9 (2009) is also quite old; a newer TAIR build + matching TxDb may be preferable
-regardless.
+
+Why it is harder than zebrafish/chicken — three stacked issues (from reading the
+`crisprDesign::TxDb2GRangesList` source; NOT empirically retested since it was skipped):
+1. **biomaRt mart.** `.TxDb2GRangesList` calls `.getBiomartData` whenever `organism(txdb)`
+   is non-NA, and `.getBiomartData` hardcodes the main `ensembl` mart
+   (`.inferMartDataset` → `athaliana_gene_ensembl`, which is absent → `stop()`).
+   Arabidopsis lives on the Ensembl **Plants** mart (`athaliana_eg_gene`), so the default
+   path can never find it. There is no public argument to override the mart.
+2. **seqlevelsStyle.** After the transform, `TxDb2GRangesList` calls
+   `.changeSeqlevelsStyle(gl, "UCSC")`; arabidopsis has no UCSC style, so this likely
+   fails too (same class of registry gap as the zebrafish/chicken seqstyle issue).
+3. **seqname mismatch vs the BSgenome.** `TxDb.Athaliana.BioMart.plantsmart28` uses
+   Ensembl seqnames (`1..5`, `Mt`, `Pt`) while `BSgenome.Athaliana.TAIR.TAIR9` uses
+   `Chr1..Chr5`, `ChrM`, `ChrC`. The compatibility check requires CDS seqnames ⊆ genome
+   seqnames (for `getSeq`/translate), so the annotation must be renamed to the TAIR style.
+
+Sketch of a working fix (a bespoke transform, deliberately NOT implemented):
+ - Bypass biomaRt (e.g. `assignInNamespace(".getBiomartData", <synthetic-from-txdb>, "crisprDesign")`
+   so gene_symbol falls back to the AGI locus id, or source symbols from `org.At.tair.db`),
+ - call `crisprDesign:::.TxDb2GRangesList(txdb, standardChromOnly = FALSE)` directly to skip
+   the UCSC `.changeSeqlevelsStyle`,
+ - then `renameSeqlevels(gl, c("1"="Chr1",...,"Mt"="ChrM","Pt"="ChrC"))` to match the BSgenome.
+ This does not fit the existing `--standard-chrom-only` lever; it needs a new custom-transform
+ path in `build_reference_image.sh`. Also note TAIR9 (2009) / plantsmart28 (2015) are old; a
+ newer, self-consistent genome+annotation pair may be preferable before investing in this.
 
 ### chicken (galGal6) — RESOLVED in Phase 2
 Step: builder 8/16, `crisprDesign::TxDb2GRangesList(txdb)`.

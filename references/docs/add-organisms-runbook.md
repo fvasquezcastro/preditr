@@ -8,14 +8,14 @@ they are supplied separately and added by rebuilding later.
 Read `references/docs/compose-reference-images.md` first for the overall design and
 the reference-image contract. This file is the operational how-to.
 
-## Status (2026-07-14: all 7 attempted — 6 built & pushed, 1 failed)
+## Status (2026-07-14: 6 of 7 built & pushed; arabidopsis skipped)
 
-All 7 rows were built on the Docker Build Cloud builder and pushed to Docker Hub. **The
+Six organisms are built on the Docker Build Cloud builder and pushed to Docker Hub. **The
 BSgenome + TxDb package names in `reference_organisms.tsv` are all valid for Bioc 3.19** —
-every genome/annotation package installed cleanly. Both remaining failure modes live in the
-same step, `crisprDesign::TxDb2GRangesList()` (the raw-TxDb → `GRangesList` transform):
-the seqstyle-registry gap (zebrafish, chicken) is now **fixed**; the biomaRt gap
-(arabidopsis) still blocks it.
+every genome/annotation package installed cleanly. The failure modes live in the same step,
+`crisprDesign::TxDb2GRangesList()` (the raw-TxDb → `GRangesList` transform): the
+seqstyle-registry gap (zebrafish, chicken) is now **fixed**; arabidopsis is **skipped**
+(biomaRt gap plus other stacked issues — not fixed).
 
 Built, pushed, and verified (manifest + `annotation/txdb.rds` present):
 
@@ -37,17 +37,17 @@ larger images). These two images embed their exact Dockerfile at
 `/image-refs/<org>/Dockerfile`; the two canonical recipes are committed under
 `references/dockerfiles/` (see its README).
 
-Still failing (not pushed):
+Skipped (not built, not pushed):
 
-| organism    | failure in `TxDb2GRangesList()`                                              |
+| organism    | why skipped                                                                  |
 |-------------|------------------------------------------------------------------------------|
-| arabidopsis | `.getBiomartData` — "Organism 'Arabidopsis thaliana' not recognized in biomaRt" (plant; Ensembl Plants mart). Different cause; not addressed by the seqstyle fix. |
+| arabidopsis | `.getBiomartData` — "Organism 'Arabidopsis thaliana' not recognized in biomaRt" (plant; Ensembl Plants mart), plus a UCSC seqlevelsStyle gap and a TxDb-vs-BSgenome seqname mismatch. Deliberately skipped; the `--standard-chrom-only` fix does not apply. |
 
-See `references/docs/add-organisms-build-report.md` for exact error text and per-organism
-detail.
+See `references/docs/add-organisms-build-report.md` for the full analysis and a sketch of a
+bespoke transform that could fix it later.
 
-- All 7 rows remain `enabled=false` on purpose (see "Why enabled=false"). Arabidopsis needs
-  a biomaRt/OrgDb transform change, not a TSV package-name change.
+- All 7 rows remain `enabled=false` on purpose (see "Why enabled=false"). Arabidopsis was
+  skipped and needs a new custom-transform path, not a TSV package-name change.
 
 ## What was already changed in the repo
 
