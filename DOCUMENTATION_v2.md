@@ -10,8 +10,7 @@
 ## Table of Contents
 - [About PrEditR](#about-preditr)
 - [Understanding the Input](#understanding-the-input)
-  - [General Parameters](#general-parameters)
-  - [Off-Target Search Parameters](#off-target-search-parameters)
+  - [Command-line arguments](#command-line-arguments)
   - [Defining Your Base Editors](#defining-your-base-editors)
   - [Defining Your Targets](#defining-your-targets)
 - [Understanding the Output](#understanding-the-output)
@@ -50,27 +49,31 @@ It runs both as a **Shiny web application** (aimed at non-computational users th
 
 ## Understanding the Input
 
-### General Parameters
+### Command-line arguments
 
-* **--input** [REQUIRED]: Path to the targets input file.
-* **--output** [REQUIRED]: Path to the output directory.
-* **--organism** [REQUIRED unless `--reference` is given]: The organism id of an installed reference (e.g. `human`, `mouse`, or any custom organism you have installed). Must match the `organism_id` of a discovered reference — see [How the app finds references](#how-the-app-finds-references). May be omitted when `--reference` is used (the id is then read from that payload's manifest).
-* **--job_name** [REQUIRED]: A unique name for the analysis job, used to name the output files.
-* **--threads** [OPTIONAL]: Controls how many guides are designed in parallel (int; default: 1). The tool requires a baseline of ~1.5 GB RAM, plus ~1.5 GB for each additional thread.
-* **--references_path** [OPTIONAL]: Directory holding per-organism reference data (one subdirectory per organism, each with a `preditr_reference.json`). Overrides the `PREDITR_REFERENCES_PATH` environment variable. Defaults to `/refs`. See [Organism Reference Data](#organism-reference-data).
-* **--reference** [OPTIONAL]: Path to a **single** organism's reference payload directory (the folder that directly contains `preditr_reference.json`). Convenience alternative to `--references_path` + `--organism`: the organism id is read from the payload's manifest, and the directory name must equal that id. Purely a filesystem path, so it behaves identically under Docker and Singularity.
-* **--list_organisms** [OPTIONAL]: List the organisms available under `--references_path` and exit.
+The complete set of CLI flags is below. The Shiny app exposes the same options as
+form fields, so this table is the single reference for both modes. Paths passed to the
+CLI are paths **inside the container** — bind/mount them as shown in
+[Running in Command Line Mode](#running-in-command-line-mode).
 
-### Off-Target Search Parameters
-
-* **--off_targets** [OPTIONAL] (boolean; default: `FALSE`): Set `TRUE` to enable the search.
-* **--n_mismatches** [OPTIONAL] (int; default: `3`): Search for off-target sites with up to this number of differences.
-* **--n_max_alignments** (int; default: `10`): Filters out promiscuous guides. Any guide with a number of perfect, zero-mismatch alignments to the genome ≥ this value is discarded.
-* **--indexed_genome** [OPTIONAL]: Path to the folder containing the indexed genome files required for off-target search.
-
-#### Control Guides
-
-* **--non_editing_controls** [OPTIONAL] (boolean; default: `FALSE`): Set `TRUE` to enable the search for non-editing controls for each gene in the input.
+| Argument | Required? | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--input` | Yes | — | Path to the targets CSV (see [Defining Your Targets](#defining-your-targets)). |
+| `--editors` | Yes | — | Path to the editors CSV (see [Defining Your Base Editors](#defining-your-base-editors)). |
+| `--output` | Yes | — | Output directory. **Must already exist.** |
+| `--tmp` | Yes | — | Scratch directory for the run. **Must already exist**; its contents are cleared on exit. |
+| `--organism` | Yes* | — | Organism id of an installed reference (`human`, `mouse`, …). *Optional when `--reference` is given — the id is then read from the payload's manifest. See [How the app finds references](#how-the-app-finds-references). |
+| `--reference` | No | — | Path to a **single** organism's payload directory (the folder that directly contains `preditr_reference.json`). One-shot alternative to `--references_path` + `--organism`; the directory name must equal the organism id. A plain filesystem path, so it behaves identically under Docker and Singularity. |
+| `--references_path` | No | `/refs` | Base directory holding per-organism references. Overrides the `PREDITR_REFERENCES_PATH` environment variable. |
+| `--job_name` | No | `PrEditR_job` | Name used in output filenames. Letters, numbers, and `( ) . _` only. |
+| `--threads` | No | `4` | Number of parallel workers. Budget ~1.5 GB RAM baseline + ~1.5 GB per additional thread. |
+| `--off_targets` | No | `FALSE` | `TRUE` enables the off-target search (requires `--indexed_genome`). |
+| `--indexed_genome` | If `--off_targets TRUE` | — | Folder of Bowtie `.ebwt` index files for the organism's genome. |
+| `--n_mismatches` | No | `3` | Maximum mismatches when searching for off-targets (max 10). |
+| `--n_max_alignments` | No | `3` | Discard guides with more than this many exact (0-mismatch) genomic alignments. |
+| `--non_editing_controls` | No | `FALSE` | `TRUE` also returns, per gene, guides whose edit window makes no edit. |
+| `--flanking5` / `--flanking3` | No | `""` | 5'/3' sequence appended to each spacer when screening for restriction sites (EcoRI, KpnI, BsmBI, BsaI, BbsI, PacI). |
+| `--list_organisms` | No | — | Print the organisms installed under the references path and exit. |
 
 ### Defining Your Base Editors
 
@@ -421,7 +424,8 @@ The **same** application image serves both the Shiny app and the CLI. Running th
 with no arguments launches Shiny; running it **with arguments** runs the CLI. As with
 the Shiny app, the CLI needs a references directory — supply it the same two ways.
 
-Run `--help` inside the image for the full argument list:
+See [Command-line arguments](#command-line-arguments) for every flag, or print them
+from the image:
 
 ```sh
 docker run --rm fvasquezcastro/preditr:1.8.0_amd64 --help
@@ -562,7 +566,7 @@ image or build a payload folder first.
 3. **PAM Orientation**: PAM sequences are assumed to lie immediately downstream (3') of the protospacer.
 4. **Uniform Length**: All protospacers designed in a single run must be the same length. Mixed-length designs cannot be combined in one execution.
 5. **Efficiency**: PrEditR assumes uniform editing efficiency across all positions within the editing window; position-specific weighted editing windows are not supported.
-6. **Organism references**: PrEditR ships **no** genome/annotation data in the application image — you must install at least one reference (image or payload folder) before running. Curated references (human GRCh38, mouse mm10) are built from Ensembl-derived ID maps; the exact provenance is recorded in each reference's manifest. Custom references built from FASTA/GFF are only as complete as the inputs you provide.
+6. **Organism references**: PrEditR ships **no** genome/annotation data in the application image — you must install at least one reference (image or payload folder) before running. Curated references (the eight organisms in [Getting prebuilt reference images](#getting-prebuilt-reference-images)) are built from Ensembl-derived ID maps; the exact provenance is recorded in each reference's manifest. Custom references built from FASTA/GFF are only as complete as the inputs you provide.
 7. **Bioconductor compatibility**: A reference must be built for the same Bioconductor version as the application image. PrEditR checks this at load time and refuses to run on a mismatch — rebuild the reference (or use a matching app image) if you see this error.
 8. **UniProt-ID mapping**: UniProt→transcript mapping relies on the ID maps bundled with a reference. A custom reference built without a UniProt map accepts Ensembl/transcript IDs only. For associations newer than a reference's ID-map snapshot, provide the Ensembl transcript ID directly to bypass mapping.
 
