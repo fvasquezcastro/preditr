@@ -555,16 +555,23 @@ server <- function(input, output, session) {
     }
 
     rows <- seq_len(direct_target_count())
-    tagList(lapply(rows, function(i) {
-      fluidRow(
-        class = "direct-target-row",
-        column(2, textInput(paste0("direct_gene_symbol_", i), "Gene Symbol")),
-        column(3, textInput(paste0("direct_ensembl_id_", i), required_label("Ensembl Transcript ID"))),
-        column(3, textInput(paste0("direct_uniprot_id_", i), required_label("UniProt ID"))),
-        column(2, textInput(paste0("direct_target_aa_", i), required_label("Target AA"))),
-        column(2, textInput(paste0("direct_target_position_", i), required_label("Position")))
-      )
-    }))
+    tagList(
+      tags$p(
+        class = "direct-target-hint",
+        tags$em("Provide at least one of Gene Symbol, Ensembl Transcript ID, or UniProt ID. "),
+        "When only a gene symbol is given, the canonical transcript is used."
+      ),
+      lapply(rows, function(i) {
+        fluidRow(
+          class = "direct-target-row",
+          column(2, textInput(paste0("direct_gene_symbol_", i), "Gene Symbol")),
+          column(3, textInput(paste0("direct_ensembl_id_", i), "Ensembl Transcript ID")),
+          column(3, textInput(paste0("direct_uniprot_id_", i), "UniProt ID")),
+          column(2, textInput(paste0("direct_target_aa_", i), required_label("Target AA"))),
+          column(2, textInput(paste0("direct_target_position_", i), required_label("Position")))
+        )
+      })
+    )
   })
 
   observeEvent(input$add_direct_target, {
@@ -607,9 +614,9 @@ server <- function(input, output, session) {
       stop("Add at least one target before running.")
     }
 
-    invalid_id <- !nzchar(targets_df$ensembl_id) & !nzchar(targets_df$uniprot_id)
+    invalid_id <- !nzchar(targets_df$gene_symbol) & !nzchar(targets_df$ensembl_id) & !nzchar(targets_df$uniprot_id)
     if (any(invalid_id)) {
-      stop("Every direct-input target must include an Ensembl ID or UniProt ID.")
+      stop("Every direct-input target must include a Gene Symbol, Ensembl ID, or UniProt ID.")
     }
 
     invalid_required <- !nzchar(targets_df$target_aa) |
