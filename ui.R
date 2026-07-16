@@ -121,7 +121,7 @@ ui <- navbarPage(
         div(
           class = "required-note",
           tags$span(class = "required-asterisk", "*"),
-          " Required. Provide either an Ensembl transcript ID or a UniProt ID for each target."
+          " Required. Provide at least one of gene symbol, Ensembl transcript ID, or UniProt ID for each target."
         ),
         uiOutput("direct_targets_ui"),
         div(class = "run-button-container",
@@ -372,7 +372,7 @@ ui <- navbarPage(
           data.frame(
             `Column` = c("gene_symbol", "ensembl_id", "uniprot_id", "target_aa", "target_position", "editor", "edit_type"),
             `Description` = c(
-              "Official gene symbol (e.g., KRAS).",
+              "Official gene symbol (e.g., KRAS). Can be provided on its own; PrEditR resolves it to the canonical transcript.",
               "Ensembl transcript ID (recommended for isoform-specific designs). Use only the ID portion (e.g., ENST00000256078) without the version suffix.",
               "UNIPROT ID of the target protein. Only reviewed UniProt IDs are supported.",
               "Single-letter amino acid code of the target residue (e.g., V for Valine).",
@@ -390,12 +390,13 @@ ui <- navbarPage(
           br(),
           p(
             strong("IMPORTANT CONSIDERATIONS:"), " ",
-            "Users are only required to provide one ID (Ensembl or UniProt). However, when both Ensembl Transcript and UniProt IDs are provided for the same target (i.e., row in targets.csv), ",
-            strong("Ensembl Transcript IDs are prioritized over UniProt IDs"),
-            " because PrEditR queries genetic databases (i.e., if Ensembl and UniProt IDs do not match, ",
+            "Users are only required to provide one identifier per target (gene symbol, Ensembl transcript ID, or UniProt ID). When more than one is provided for the same target (i.e., row in targets.csv), ",
+            strong("Ensembl Transcript IDs are prioritized over UniProt IDs, which are prioritized over gene symbols"),
+            " because PrEditR queries genetic databases (i.e., if the identifiers do not match, ",
             em("PrEditR will use the Ensembl ID"),
-            "). ",            
-            "Only ",
+            "). When ",
+            strong("only a gene symbol"),
+            " is given, PrEditR designs sgRNAs for the canonical transcript of that gene. Only ",
             strong("reviewed UniProt IDs"),
             " are supported. PrEditR is isoform-aware; UniProt IDs should specify the correct isoform. If several are available for the same protein and the isoform is not indicated (e.g., simply P38398 instead of P38398-1), PrEditR will automatically search sgRNAs for the canonical Ensembl isoform.",
           )

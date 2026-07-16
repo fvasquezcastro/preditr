@@ -74,15 +74,16 @@ argsChecker <- function(input, job_name, editors, output, organism, tmp,
     return(1)
   }
   
-  #Check that each row in the input indicates an ensembl_id or uniprot_id
+  #Check that each row in the input indicates a gene_symbol, ensembl_id, or uniprot_id
   invalid_rows <- with(
     input_df,
+      (is.na(gene_symbol) | gene_symbol == "") &
       (is.na(ensembl_id) | ensembl_id == "") &
       (is.na(uniprot_id) | uniprot_id == "")
   )
-  
+
   if (any(invalid_rows)) {
-    ParallelLogger::logError("Every row must have a value for ensembl_id or uniprot_id but both fields cannot be left empty.")
+    ParallelLogger::logError("Every row must have a value for gene_symbol, ensembl_id, or uniprot_id; all three fields cannot be left empty.")
     return(1)
   }
   

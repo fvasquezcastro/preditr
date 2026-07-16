@@ -182,33 +182,41 @@ runPrEditR <- function(
   
   #organism_data <- loadOrganismData(organism)
   
-  #Map UNIPROT IDs to Ensembl IDs and Ensembl IDs to UNIPROT IDs
+  #Resolve each row down to an Ensembl transcript ID and a UniProt ID. A row may
+  #arrive with any one of gene_symbol / ensembl_id / uniprot_id (the rest blank),
+  #so the Ensembl transcript ID is the anchor everything is derived from:
+  #  - gene symbol -> canonical Ensembl transcript (mapGeneSymbol2Ensembl)
+  #  - UniProt ID  -> Ensembl transcript           (mapUniprot2Ensembl)
+  #  - Ensembl transcript -> UniProt ID            (mapEnsembl2Uniprot)
   trimmed_ensembl_ids <- trimEnsembl(as.character(df$ensembl_id))
-  uniprot2ensembl_ids <- as.character(df$uniprot_id)
-  ensembl2uniprot_ids <- trimmed_ensembl_ids 
-  
-  mapped_ensembl_ids <- mapUniprot2Ensembl(organism, uniprot2ensembl_ids)
-  mapped_uniprot_ids <- mapEnsembl2Uniprot(organism, ensembl2uniprot_ids)
-  
-  df$ensembl_id_mapped <- mapped_ensembl_ids
-  df$uniprot_id_mapped <- mapped_uniprot_ids
-  
+
+  #Symbol- and UniProt-derived Ensembl IDs (each independent of the others).
+  symbol_mapped_ensembl_ids  <- mapGeneSymbol2Ensembl(organism, as.character(df$gene_symbol))
+  uniprot_mapped_ensembl_ids <- mapUniprot2Ensembl(organism, as.character(df$uniprot_id))
+
+  #Ensembl ID precedence: an explicit ensembl_id wins, then the UniProt-derived
+  #one (isoform-aware), then the gene-symbol-derived canonical transcript.
   merged_mapped_ensembl_ids <- ifelse(
-    !is.na(df$ensembl_id) & nzchar(df$ensembl_id),
-    df$ensembl_id,
-    df$ensembl_id_mapped
+    !is.na(trimmed_ensembl_ids) & nzchar(trimmed_ensembl_ids),
+    trimmed_ensembl_ids,
+    ifelse(
+      !is.na(uniprot_mapped_ensembl_ids) & nzchar(uniprot_mapped_ensembl_ids),
+      uniprot_mapped_ensembl_ids,
+      symbol_mapped_ensembl_ids
+    )
   )
-  
+
+  #Fill UniProt from the resolved Ensembl transcript, then let an explicit
+  #uniprot_id win over the derived one.
+  ensembl_mapped_uniprot_ids <- mapEnsembl2Uniprot(organism, merged_mapped_ensembl_ids)
   merged_mapped_uniprot_ids <- ifelse(
     !is.na(df$uniprot_id) & nzchar(df$uniprot_id),
     df$uniprot_id,
-    df$uniprot_id_mapped
+    ensembl_mapped_uniprot_ids
   )
-  
+
   df$ensembl_id <- merged_mapped_ensembl_ids
   df$uniprot_id <- merged_mapped_uniprot_ids
-  df$ensembl_id_mapped <- NULL
-  df$uniprot_id_mapped <- NULL
   
   #Flag those that are known to have multiple isoforms
   df$isoforms <- flagIsoforms(organism, df$uniprot_id)
@@ -261,8 +269,8 @@ runPrEditR <- function(
   txdb <- small_txdb
   rm(full_txdb, organism_ref)
   
-  rm(trimmed_ensembl_ids, uniprot2ensembl_ids, ensembl2uniprot_ids, 
-     mapped_ensembl_ids, mapped_uniprot_ids, merged_mapped_ensembl_ids, 
+  rm(trimmed_ensembl_ids, symbol_mapped_ensembl_ids, uniprot_mapped_ensembl_ids,
+     ensembl_mapped_uniprot_ids, merged_mapped_ensembl_ids,
      merged_mapped_uniprot_ids)
   gc()
   
