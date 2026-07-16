@@ -1,13 +1,6 @@
 generateErrorOutput <- function(row_num, off_targets, n_mismatches,
                                 gene_symbol, ensembl_id){
-  
-  error_message <- ifelse(
-    (is.na(gene_symbol) || gene_symbol == "") && (is.na(ensembl_id) || ensembl_id == ""),
-    "UNIPROT ID does not match to any entry in the database.
-    Please check for typos or consider searching by Gene Symbol or Ensembl ID instead",
-    "Unexpected Error"
-  )
-  
+
   new_row <- data.frame(query_num = as.character(row_num),
                         ensembl_id_used = "",
                         gene_strand = "",

@@ -90,13 +90,13 @@ See `www/editors_example.csv` for a reference file. The Direct Input tab of the 
 
 ### Defining Your Targets
 
-**Note:** Either a **UniProt ID** or an **Ensembl ID** is **REQUIRED**. Providing a gene symbol alone is not sufficient. UniProt-ID input depends on the selected organism's reference including ID maps (all curated references include them; a custom FASTA/GFF reference built without a UniProt map accepts Ensembl/transcript IDs only — see [Building a custom reference](#building-a-custom-reference-payload-folder)).
+**Note:** At least one of **gene symbol**, **Ensembl transcript ID**, or **UniProt ID** is **REQUIRED** per target — any one is sufficient. When more than one is given, the Ensembl transcript ID takes precedence over the UniProt ID, which takes precedence over the gene symbol. A gene symbol on its own resolves to the gene's canonical transcript. Gene-symbol and UniProt-ID input depend on the selected organism's reference including the corresponding ID maps (all curated references include them; a custom FASTA/GFF reference built without those maps accepts Ensembl/transcript IDs only — see [Building a custom reference](#building-a-custom-reference-payload-folder)).
 
 | Column Name | Description |
 | :--- | :--- |
-| **uniprot_id** | The UniProt Accession ID (e.g., `P01116`). |
+| **gene_symbol** | The official symbol for the target gene (e.g., `KRAS`). Sufficient on its own; resolves to the canonical transcript. |
 | **ensembl_id** | The Ensembl transcript ID (e.g., `ENST00000256078`). Highly recommended for isoform precision. |
-| **gene_symbol** | The official symbol for the target gene (e.g., `KRAS`). |
+| **uniprot_id** | The UniProt Accession ID (e.g., `P01116`). |
 | **target_aa** | The single-letter code for the target amino acid (e.g., `V`). |
 | **target_position** | The numerical position of the target amino acid within the protein sequence. |
 | **editor** | The name of the editor for this target (must match `name` in the editors file). |
