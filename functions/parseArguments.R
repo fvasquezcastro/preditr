@@ -3,7 +3,12 @@ parseArguments <- function(){
   
   args <- argparser::arg_parser("Design sgRNAs to target specific amino acids with base editors using PrEditR")
   
-  args <- argparser::add_argument(args, "--input", help = "Path to the input file",
+  args <- argparser::add_argument(args, "--input",
+                       help = "Path to the input targets CSV. Each row must supply at least one of
+                     gene_symbol, ensembl_id (Ensembl transcript ID), or uniprot_id; any one is
+                     sufficient. When more than one is given, ensembl_id takes precedence over
+                     uniprot_id, which takes precedence over gene_symbol. A gene symbol alone
+                     resolves to the gene's canonical transcript.",
                        type = "character")
   
   args <- argparser::add_argument(args, "--job_name", help = "Job name (no whitespaces)",
