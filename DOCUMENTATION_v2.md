@@ -1,7 +1,7 @@
-# PrEditR Documentation (v2)
+# PrEditR Documentation
 
-> **What changed in this version.** PrEditR no longer bakes genome/annotation data
-> into its application image. Organism reference data is now supplied *externally* and
+> **How organism data works.** The PrEditR application image ships without any
+> genome/annotation data. Organism reference data is supplied *externally* and
 > discovered at runtime. You can supply it two ways — a **prebuilt reference image**
 > from Docker Hub, or a **custom payload folder** you build yourself — and both the
 > Shiny app and the CLI consume either one identically. See
@@ -22,9 +22,9 @@
   - [Building a custom reference (payload folder)](#building-a-custom-reference-payload-folder)
   - [How the app finds references](#how-the-app-finds-references)
 - [Running the Shiny App (Docker Desktop)](#running-the-shiny-app-docker-desktop)
-  - [1. System Architecture](#1-system-architecture)
+  - [1. Which version to download](#1-which-version-to-download)
   - [2. Option A — Docker Compose (recommended)](#2-option-a--docker-compose-recommended)
-  - [3. Option B — Docker Desktop GUI walkthrough](#3-option-b--docker-desktop-gui-walkthrough)
+  - [3. Option B — Docker Desktop GUI walkthrough (no terminal)](#3-option-b--docker-desktop-gui-walkthrough-no-terminal)
   - [4. Accessing and using PrEditR](#4-accessing-and-using-preditr)
   - [5. Managing PrEditR Containers](#5-managing-preditr-containers)
 - [Running in Command Line Mode](#running-in-command-line-mode)
@@ -137,15 +137,15 @@ PrEditR appends the following columns to the input:
 
 ## Organism Reference Data
 
-This is the part of PrEditR that changed most in this version. Read it once and the
-rest of the Shiny/CLI instructions will make sense.
+This is the core model behind PrEditR's data. Read it once and the rest of the
+Shiny/CLI instructions will make sense.
 
 ### Why references are external
 
-Earlier versions shipped human (hg38) and mouse (mm10) genome and annotation data
-*inside* the application image. That made the image huge and made adding organisms a
-code change. PrEditR now keeps the application image lean and reads organism data at
-runtime from a **references directory** (default `/refs`, configurable via the
+The PrEditR application image contains only the guide-design software — no
+genome or annotation data. This keeps the image lean and lets you add organisms
+without touching the app. PrEditR reads organism data at runtime from a
+**references directory** (default `/refs`, configurable via the
 `PREDITR_REFERENCES_PATH` environment variable or the CLI `--references_path` flag).
 
 Each organism lives in its own subdirectory, and the app **discovers** what is
@@ -280,16 +280,16 @@ The Shiny app is the recommended path for non-computational users. There are two
 to launch it: **Docker Compose** (recommended — it wires up references for you) and the
 **Docker Desktop GUI** (manual, more clicking but no terminal required).
 
-### 1. System Architecture
+### 1. Which version to download
 
-Identify your chip architecture to use the correct application image tag:
+PrEditR comes in two builds — pick the one that matches your computer's processor:
 
-* **`amd64`**: Intel and AMD processors.
-* **`arm64`**: Apple M-series chips and Snapdragon processors.
+* **`amd64`** — Intel or AMD processors (most Windows PCs, older Macs).
+* **`arm64`** — Apple M-series chips (M1/M2/M3/M4) and Snapdragon.
 
-The application image is published as `fvasquezcastro/preditr:<version>_<arch>` (e.g.
-`fvasquezcastro/preditr:1.8.0_amd64` or `...:1.8.0_arm64`). Reference images are
-currently `linux/amd64` and run under emulation on Apple Silicon.
+You'll use this later as the *tag* when you download the app, e.g.
+`1.8.0_amd64` or `1.8.0_arm64`. If you're not sure which you have, `amd64` will
+still run on Apple Silicon (just a little slower).
 
 ### 2. Option A — Docker Compose (recommended)
 
@@ -358,43 +358,93 @@ bind mount to the `preditr-shiny` service in `run/compose.yaml`, for example:
 
 The custom organism then shows up in the dropdown next to the curated ones.
 
-### 3. Option B — Docker Desktop GUI walkthrough
+### 3. Option B — Docker Desktop GUI walkthrough (no terminal)
 
-If you prefer not to use the terminal, you can drive everything from the Docker
-Desktop GUI. Because references are external, you must make a references directory
-available to the app — the simplest GUI-friendly approach is to **use a payload
-folder** on your host and bind it to `/refs`.
+This is the click-only path. You don't need to understand how Docker works — just
+follow the steps and copy the values into the fields exactly as shown.
 
-**Prepare a references folder on your host** (one subdirectory per organism), either
-by building one with the `ref-builder` image or by unpacking a reference image. For
-example, a folder `C:\preditr\refs` (Windows) or `~/preditr/refs` (macOS/Linux)
-containing `human/`, `mouse/`, and/or your custom organism directories.
+Two ideas make the rest easy:
 
-1. **Download the application image**: search `fvasquezcastro/preditr` in the Docker
-   Desktop search bar and pull the tag matching your architecture (e.g.
-   `1.8.0_amd64` or `1.8.0_arm64`).
-2. **Run**: in the `Images` tab, click **Run** next to the PrEditR image, then open
-   `Optional settings`.
-3. **Ports**: set a `Host Port` of `3838` (mapping to container port `3838`).
-4. **Volumes**:
-   * **References (required)** — bind your host references folder:
-     * `Host Path`: the folder containing your organism subdirectories (e.g. `~/preditr/refs`).
-     * `Container Path`: `/refs`.
-   * **Outputs (recommended)** — bind a host folder to keep results after the
-     container stops:
-     * `Host Path`: e.g. `~/preditr/outputs`.
-     * `Container Path`: `/outputs`.
-   * **Indexed genome (only for off-target search)** — bind the folder holding your
-     indexed genome files to the container path expected by your run.
-5. **Environment variables**: set `PREDITR_REFERENCES_PATH=/refs` (and
-   `PREDITR_OUTPUTS_PATH=/outputs` if you bound an outputs folder).
-6. **Start**: click the blue **Run** button, then open
-   [http://127.0.0.1:3838](http://127.0.0.1:3838).
+* You download two things: the **app** (`fvasquezcastro/preditr`) and at least one
+  **organism** (`fvasquezcastro/preditr-ref`, e.g. human). The app has the software;
+  the organism has the genome data it needs.
+* You make **two folders** on your computer — one for the organism data (`refs`) and
+  one for your results (`outputs`) — and tell each container to use them.
 
-> **Note.** The application image's entrypoint launches the Shiny app when the
-> container is started **with no command arguments** — which is exactly what the GUI
-> "Run" button does. Passing arguments instead switches the same image into CLI mode
-> (see [Running in Command Line Mode](#running-in-command-line-mode)).
+#### Step 1 — Install Docker Desktop and make two folders
+
+1. Install **Docker Desktop** from the [Docker website](https://www.docker.com/products/docker-desktop/)
+   and open it.
+2. On your computer, create a folder called `preditr` with two empty folders inside:
+   `refs` and `outputs`. For example:
+   * macOS/Linux: `~/preditr/refs` and `~/preditr/outputs`
+   * Windows: `C:\preditr\refs` and `C:\preditr\outputs`
+
+   Remember the full path to each — you'll paste them into fields below.
+
+#### Step 2 — Download the app and an organism
+
+In the Docker Desktop **search bar** at the top, search for and pull each of these:
+
+| Search for | Pick the tag | What it is |
+| :--- | :--- | :--- |
+| `fvasquezcastro/preditr` | `1.8.0_amd64` or `1.8.0_arm64` ([which one?](#1-which-version-to-download)) | The PrEditR app |
+| `fvasquezcastro/preditr-ref` | `human-grch38` (or another organism from [the list](#getting-prebuilt-reference-images)) | The organism's genome data |
+
+To pull: type the name, click the result, choose the tag from the **Tag** dropdown,
+and click **Pull**. Repeat the organism download for every organism you want.
+
+#### Step 3 — Load the organism data into your `refs` folder
+
+The organism download is a small helper that copies its data into your `refs`
+folder and then stops by itself. Run it once per organism:
+
+1. Go to the **Images** tab and click **Run** on the `fvasquezcastro/preditr-ref` image.
+2. Click **Optional settings** and fill in one **Volume**:
+
+   | Field | Value |
+   | :--- | :--- |
+   | Host path | your `refs` folder, e.g. `~/preditr/refs` |
+   | Container path | `/refs` |
+
+3. Click **Run**. It runs for a moment and stops on its own — **that's normal.** Your
+   `refs` folder now contains the organism (e.g. a `human` subfolder). Repeat for each
+   organism you downloaded.
+
+#### Step 4 — Start the PrEditR app
+
+1. Go to the **Images** tab and click **Run** on the `fvasquezcastro/preditr` image.
+2. Click **Optional settings** and fill in these fields:
+
+   **Ports**
+
+   | Field | Value |
+   | :--- | :--- |
+   | Host port | `3838` |
+
+   **Volumes** (click **+** to add a second row)
+
+   | Host path | Container path |
+   | :--- | :--- |
+   | your `refs` folder, e.g. `~/preditr/refs` | `/refs` |
+   | your `outputs` folder, e.g. `~/preditr/outputs` | `/outputs` |
+
+   **Environment variables** (click **+** to add a second row)
+
+   | Variable | Value |
+   | :--- | :--- |
+   | `PREDITR_REFERENCES_PATH` | `/refs` |
+   | `PREDITR_OUTPUTS_PATH` | `/outputs` |
+
+3. Click the blue **Run** button.
+
+#### Step 5 — Open PrEditR
+
+Open your web browser to **[http://127.0.0.1:3838](http://127.0.0.1:3838)**. The
+organisms you loaded in Step 3 appear in the **Organism** dropdown. You're ready to
+design guides — see [Accessing and using PrEditR](#4-accessing-and-using-preditr).
+
+Your results also appear in your `outputs` folder on your computer.
 
 ### 4. Accessing and using PrEditR
 
@@ -402,8 +452,8 @@ Open a browser at [http://127.0.0.1:3838](http://127.0.0.1:3838).
 
 * **Organism**: the **Organism** dropdown (on both the Direct Input and Batch Search
   tabs) lists exactly the organisms discovered under the references directory. If an
-  organism you expected is missing, its reference isn't installed — check your Compose
-  file / mounted folder.
+  organism you expected is missing, its reference isn't installed — confirm you loaded
+  it into your `refs` folder (GUI Step 3) or that it's wired into your Compose file.
 * **Direct Input tab**: enter targets and pick editors inline — no CSV needed.
 * **Batch Search tab**: upload a targets CSV and an editors CSV, then click **Run
   Batch**.
