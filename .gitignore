@@ -1,5 +1,5 @@
 CLAUDE.md
-local/
+local/strictly_local/
 .claude/
 
 # Compose runtime dirs (created by run/*.sh; hold user inputs, results, tmp)
