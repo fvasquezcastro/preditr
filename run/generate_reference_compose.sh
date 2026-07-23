@@ -11,7 +11,7 @@ Usage:
 Options:
   --config VALUE        TSV organism config. Default: run/reference_organisms.tsv.
   --output VALUE        Compose output file. Default: run/compose.yaml.
-  --app-image VALUE     Shiny app image. Default: fvasquezcastro/preditr:1.8.0_amd64.
+  --app-image VALUE     Shiny app image. Default: fvasquezcastro/preditr:1.9.0_amd64.
   --port VALUE          Host port for Shiny. Default: 3838.
   --project-name VALUE  Compose project name. Default: preditr.
   --no-filter           Wire every enabled organism even if its reference image is
@@ -32,7 +32,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # is kept here as run/reference_organisms.tsv so this generator stays self-contained.
 CONFIG="${SCRIPT_DIR}/reference_organisms.tsv"
 OUTPUT="${SCRIPT_DIR}/compose.yaml"
-APP_IMAGE="${PREDITR_APP_IMAGE:-fvasquezcastro/preditr:1.8.0_amd64}"
+APP_IMAGE="${PREDITR_APP_IMAGE:-fvasquezcastro/preditr:1.9.0_amd64}"
 PORT="${PREDITR_SHINY_PORT:-3838}"
 PROJECT_NAME="preditr"
 FILTER_LOCAL=true
