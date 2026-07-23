@@ -288,7 +288,7 @@ PrEditR comes in two builds — pick the one that matches your computer's proces
 * **`arm64`** — Apple M-series chips (M1/M2/M3/M4) and Snapdragon.
 
 You'll use this later as the *tag* when you download the app, e.g.
-`1.9.0_amd64` or `1.8.0_arm64`. If you're not sure which you have, `amd64` will
+`1.9.0_amd64` or `1.9.0_arm64`. If you're not sure which you have, `amd64` will
 still run on Apple Silicon (just a little slower).
 
 ### 2. Option A — Docker Compose (recommended)
@@ -388,7 +388,7 @@ In the Docker Desktop **search bar** at the top, search for and pull each of the
 
 | Search for | Pick the tag | What it is |
 | :--- | :--- | :--- |
-| `fvasquezcastro/preditr` | `1.9.0_amd64` or `1.8.0_arm64` ([which one?](#1-which-version-to-download)) | The PrEditR app |
+| `fvasquezcastro/preditr` | `1.9.0_amd64` or `1.9.0_arm64` ([which one?](#1-which-version-to-download)) | The PrEditR app |
 | `fvasquezcastro/preditr-ref` | `human-grch38` (or another organism from [the list](#getting-prebuilt-reference-images)) | The organism's genome data |
 
 To pull: type the name, click the result, choose the tag from the **Tag** dropdown,
