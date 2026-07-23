@@ -9,9 +9,9 @@ loadFunctions()
 # =====================================================================================================================
 
 worker_fun <- function(query_num, gene_symbol, ensembl_id, uniprot_id, isoforms, target_aa,
-                       target_position, editor, edit_type, organism, genome, 
-                       txdb, editors_path, n_mismatches, n_max_alignments, flanking5, flanking3, 
-                       session_tmp, debug, progressor) {
+                       target_position, editor, edit_type, organism, genome,
+                       txdb, editors_path, n_mismatches, n_max_alignments, flanking5, flanking3,
+                       session_tmp, debug, progressor, off_targets) {
 
   dump_directory <- file.path(session_tmp, paste0("row_", query_num))
   if (debug) {
@@ -28,9 +28,10 @@ worker_fun <- function(query_num, gene_symbol, ensembl_id, uniprot_id, isoforms,
     
     processed_res <- process_row(
       query_num, gene_symbol, ensembl_id, uniprot_id, isoforms, target_aa, target_position, editor, edit_type, organism, 
-      genome = local_genome, 
+      genome = local_genome,
       txdb = txdb,
-      n_mismatches, n_max_alignments, flanking5, flanking3, session_tmp
+      n_mismatches, n_max_alignments, flanking5, flanking3, session_tmp,
+      off_targets = off_targets
     )
     
     if (!is.null(progressor)) progressor(message = "")
@@ -343,10 +344,17 @@ runPrEditR <- function(
     session_tmp = session_tmp,
     debug = debug,
     progressor = progressor,
+    off_targets = off_targets,
     .options = furrr::furrr_options(
       globals = export_globals,
       packages = worker_packages,
-      seed = TRUE
+      seed = TRUE,
+      # Bound each forked worker's lifetime to a fixed slice of rows regardless of
+      # input size. Short-lived forks cap per-worker transient/GC drift and the
+      # COW privatization that accumulates over a fork's lifetime (R's GC stamps
+      # mark bits into inherited pages), and return that memory to the OS on exit.
+      # Chunking never changes results; seed = TRUE keeps RNG reproducible.
+      chunk_size = 250
     )
   )
   

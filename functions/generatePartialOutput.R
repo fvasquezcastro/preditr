@@ -1,6 +1,6 @@
 generatePartialOutput <- function(row_num, candidate_guides, genome, target_position, target_aa,
                                   cds_coordinates, strand, editor, edit_type, gene_symbol, 
-                                  ensembl_id, absolute_codon_locations, isoforms){
+                                  ensembl_id, absolute_codon_locations, isoforms, off_targets = FALSE){
   #Have to take notes of the guides that were skipped to not export them in the partial guideset
   excluded_guides <- c()
   
@@ -197,7 +197,11 @@ generatePartialOutput <- function(row_num, candidate_guides, genome, target_posi
   
   partial_output <- list(
     partial_df = partial_df,
-    partial_guideset = candidate_guides #candidate_guides[!(seq_along(candidate_guides) %in% excluded_guides)]
+    # The GuideSet is only consumed by findOffTargets() (gated on off_targets in
+    # PrEditR.R). When off-targets are off, retaining it is pure dead weight that
+    # every worker buffers for its whole chunk and the parent accumulates for all
+    # rows, so drop it at the source.
+    partial_guideset = if (isTRUE(off_targets)) candidate_guides else NULL #candidate_guides[!(seq_along(candidate_guides) %in% excluded_guides)]
   )
   
   return(partial_output)

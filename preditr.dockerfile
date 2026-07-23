@@ -1,4 +1,5 @@
-FROM fvasquezcastro/preditr_base:v8_amd64
+ARG BASE_IMAGE=fvasquezcastro/preditr_base:v8_amd64
+FROM ${BASE_IMAGE}
 
 RUN mkdir -p /app
 

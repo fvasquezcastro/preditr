@@ -288,7 +288,7 @@ PrEditR comes in two builds — pick the one that matches your computer's proces
 * **`arm64`** — Apple M-series chips (M1/M2/M3/M4) and Snapdragon.
 
 You'll use this later as the *tag* when you download the app, e.g.
-`1.8.0_amd64` or `1.8.0_arm64`. If you're not sure which you have, `amd64` will
+`1.9.0_amd64` or `1.9.0_arm64`. If you're not sure which you have, `amd64` will
 still run on Apple Silicon (just a little slower).
 
 ### 2. Option A — Docker Compose (recommended)
@@ -345,7 +345,7 @@ bind mount to the `preditr-shiny` service in `run/compose.yaml`, for example:
 
 ```yaml
   preditr-shiny:
-    image: fvasquezcastro/preditr:1.8.0_amd64
+    image: fvasquezcastro/preditr:1.9.0_amd64
     ports:
       - "3838:3838"
     volumes:
@@ -388,7 +388,7 @@ In the Docker Desktop **search bar** at the top, search for and pull each of the
 
 | Search for | Pick the tag | What it is |
 | :--- | :--- | :--- |
-| `fvasquezcastro/preditr` | `1.8.0_amd64` or `1.8.0_arm64` ([which one?](#1-which-version-to-download)) | The PrEditR app |
+| `fvasquezcastro/preditr` | `1.9.0_amd64` or `1.9.0_arm64` ([which one?](#1-which-version-to-download)) | The PrEditR app |
 | `fvasquezcastro/preditr-ref` | `human-grch38` (or another organism from [the list](#getting-prebuilt-reference-images)) | The organism's genome data |
 
 To pull: type the name, click the result, choose the tag from the **Tag** dropdown,
@@ -483,7 +483,7 @@ See [Command-line arguments](#command-line-arguments) for every flag, or print t
 from the image:
 
 ```sh
-docker run --rm fvasquezcastro/preditr:1.8.0_amd64 --help
+docker run --rm fvasquezcastro/preditr:1.9.0_amd64 --help
 ```
 
 ### CLI via Docker Compose
@@ -525,7 +525,7 @@ docker run --rm \
   -v "$PWD/refs":/refs:ro \
   -v "$PWD/inputs":/inputs:ro \
   -v "$PWD/outputs":/outputs \
-  fvasquezcastro/preditr:1.8.0_amd64 \
+  fvasquezcastro/preditr:1.9.0_amd64 \
     --input    /inputs/targets.csv \
     --editors  /inputs/editors.csv \
     --output   /outputs \
@@ -601,7 +601,7 @@ directory:
 
 ```sh
 # Docker
-docker run --rm -v "$PWD/refs":/refs:ro fvasquezcastro/preditr:1.8.0_amd64 \
+docker run --rm -v "$PWD/refs":/refs:ro fvasquezcastro/preditr:1.9.0_amd64 \
   --list_organisms --references_path /refs
 
 # Docker Compose (uses the shared /refs volume)
