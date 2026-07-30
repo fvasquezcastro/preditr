@@ -1,5 +1,5 @@
 generateErrorOutput <- function(row_num, off_targets, n_mismatches,
-                                gene_symbol, ensembl_id){
+                                gene_symbol, ensembl_id, dna_context = FALSE){
 
   new_row <- data.frame(query_num = as.character(row_num),
                         ensembl_id_used = "",
@@ -36,7 +36,16 @@ generateErrorOutput <- function(row_num, off_targets, n_mismatches,
     )
     
     new_row <- cbind(new_row, enzymes)
-  
+
+  if (isTRUE(dna_context)){
+
+    new_row <- cbind(new_row, data.frame(
+      dna_context_upstream = "",
+      dna_edit_window = "",
+      dna_context_downstream = ""
+    ))
+  }
+
   if (off_targets){
     
     #Append the columns that correspond to the desired number of mismatches for alignments

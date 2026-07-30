@@ -49,6 +49,10 @@ PrEditR was developed by the [Myers Lab](https://www.samyerslab.org) at [La Joll
 
 * **--non_editing_controls** [OPTIONAL] (boolean; default: FALSE): Select `TRUE` to enable the search of non-editing controls for each gene in the input.
 
+### DNA Context
+
+* **--dna_context** [OPTIONAL] (boolean; default: FALSE): Select `TRUE` to append the `dna_context_upstream`, `dna_edit_window`, and `dna_context_downstream` columns to the output.
+
 ### Defining Your Base Editors
 
 | Column Name | Description | Example |
@@ -94,6 +98,7 @@ PrEditR appends the following columns to the input:
 | `protospacer_coordinates_end` | Genomic end coordinate (higher position) of the protospacer. |
 | `polyA`, `polyC`, `polyG`, `polyT` | `TRUE` if the protospacer contains a homopolymer run (≥4 nt) of the given base. A `polyT` run is a Pol III terminator that can truncate U6-driven sgRNA transcription. |
 | `startingGGGGG` | `TRUE` if the protospacer begins with a run of five G's (`GGGGG`). |
+| `dna_context_upstream`, `dna_edit_window`, `dna_context_downstream` | Only present when `--dna_context TRUE`. Raw genomic DNA sequence of the edit window and the 50 nt immediately upstream/downstream of it, in the sgRNA's own 5'->3' orientation. |
 | `mutation_type` | Classification of the intended mutation (e.g., missense, nonsense, silent). |
 | `wildtype_sequence` | Original amino acid sequence (+/- 7 AA). Target sites are identified by vertical bars. |
 | `mutant_sequence` | Resulting mutant amino acid sequence after the intended edit (+/- 7 AA). |
@@ -137,7 +142,8 @@ singularity exec \
     --organism $ORGANISM \
     --threads 30 \
     --tmp $TEMPORARY_PATH \
-    --non_editing_controls FALSE
+    --non_editing_controls FALSE \
+    --dna_context FALSE
 ```
 
 ---

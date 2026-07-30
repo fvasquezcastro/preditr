@@ -11,7 +11,7 @@ loadFunctions()
 worker_fun <- function(query_num, gene_symbol, ensembl_id, uniprot_id, isoforms, target_aa,
                        target_position, editor, edit_type, organism, genome,
                        txdb, editors_path, n_mismatches, n_max_alignments, flanking5, flanking3,
-                       session_tmp, debug, progressor, off_targets) {
+                       session_tmp, debug, progressor, off_targets, dna_context) {
 
   dump_directory <- file.path(session_tmp, paste0("row_", query_num))
   if (debug) {
@@ -27,11 +27,12 @@ worker_fun <- function(query_num, gene_symbol, ensembl_id, uniprot_id, isoforms,
     loadEditors(editors_path, editor)
     
     processed_res <- process_row(
-      query_num, gene_symbol, ensembl_id, uniprot_id, isoforms, target_aa, target_position, editor, edit_type, organism, 
+      query_num, gene_symbol, ensembl_id, uniprot_id, isoforms, target_aa, target_position, editor, edit_type, organism,
       genome = local_genome,
       txdb = txdb,
       n_mismatches, n_max_alignments, flanking5, flanking3, session_tmp,
-      off_targets = off_targets
+      off_targets = off_targets,
+      dna_context = dna_context
     )
     
     if (!is.null(progressor)) progressor(message = "")
@@ -44,7 +45,7 @@ worker_fun <- function(query_num, gene_symbol, ensembl_id, uniprot_id, isoforms,
     
   }, error = function(e) {
     ParallelLogger::logError(paste0("Worker ", query_num, ": Error: ", e))
-    error_res <- generateErrorOutput(query_num, FALSE, n_mismatches, gene_symbol, ensembl_id)
+    error_res <- generateErrorOutput(query_num, FALSE, n_mismatches, gene_symbol, ensembl_id, dna_context)
     if (!is.null(progressor)) progressor(message = "")
     
     rm(local_genome)
@@ -76,7 +77,8 @@ runPrEditR <- function(
     tmp,
     references_path = NULL,
     debug = FALSE,
-    progressor = NULL){
+    progressor = NULL,
+    dna_context = FALSE){
 
   gc()
   loadSetupLibraries()
@@ -305,8 +307,8 @@ runPrEditR <- function(
   
   export_globals <- c(
     
-    "addNEC", "annotateEdits", "argsChecker", "calculatePAMRange", 
-    "checkCodonLocations", "checkIDs", "cleanLog", "createEditor", 
+    "addNEC", "annotateEdits", "argsChecker", "calculateDNAContext", "calculatePAMRange",
+    "checkCodonLocations", "checkIDs", "cleanLog", "createEditor",
     "findCodonLocus", "findGuides", "findLongestTrimmedMatch", 
     "findOffTargets", "findPotentialLocus", "findRegionsOfInterest", 
     "findRelativeTargetBasePosition", "flagGuides", "generateEditedCodons", 
@@ -345,6 +347,7 @@ runPrEditR <- function(
     debug = debug,
     progressor = progressor,
     off_targets = off_targets,
+    dna_context = dna_context,
     .options = furrr::furrr_options(
       globals = export_globals,
       packages = worker_packages,
@@ -404,7 +407,7 @@ runPrEditR <- function(
     
     results_df <- generateOutput(df, job_name, output_path, results, offtargets_df, off_targets,
                                  organism, editors_path, non_editing_controls, flanking5, flanking3,
-                                 genome, indexed_genome, n_mismatches, n_max_alignments, txdb)
+                                 genome, indexed_genome, n_mismatches, n_max_alignments, txdb, dna_context)
     
     if (shiny){
       ParallelLogger::logInfo("Preparing summary plot and interactive table...")
@@ -518,7 +521,8 @@ if (identical(Sys.getenv("PREDITR_MODE"), "CLI")) {
     non_editing_controls = as.logical(args$non_editing_controls),
     tmp            = args$tmp,
     references_path = if (nzchar(args$references_path)) args$references_path else NULL,
-    debug          = (Sys.getenv("PREDITR_DEBUG") == "TRUE")
+    debug          = (Sys.getenv("PREDITR_DEBUG") == "TRUE"),
+    dna_context    = as.logical(args$dna_context)
   )
   
   quit(status = exit_code)

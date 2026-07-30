@@ -1,6 +1,6 @@
 generateOutput <- function(df, job_name, output_path, results, offtargets_df, off_targets,
                            organism, editors_path, non_targeting_controls, flanking5, flanking3,
-                           genome, indexed_genome, n_mismatches, n_max_alignments, txdb){
+                           genome, indexed_genome, n_mismatches, n_max_alignments, txdb, dna_context = FALSE){
   
   #Results comes with the logs too
   
@@ -66,7 +66,7 @@ generateOutput <- function(df, job_name, output_path, results, offtargets_df, of
     
     output <- addNEC(output, editors_path, non_targeting_controls, flanking5, flanking3,
                      off_targets, genome, indexed_genome, n_mismatches, n_max_alignments,
-                     txdb)
+                     txdb, dna_context)
     
   }
 
