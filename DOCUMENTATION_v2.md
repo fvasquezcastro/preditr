@@ -72,6 +72,7 @@ CLI are paths **inside the container** — bind/mount them as shown in
 | `--n_mismatches` | No | `3` | Maximum mismatches when searching for off-targets (max 10). |
 | `--n_max_alignments` | No | `3` | Discard guides with more than this many exact (0-mismatch) genomic alignments. |
 | `--non_editing_controls` | No | `FALSE` | `TRUE` also returns, per gene, guides whose edit window makes no edit. |
+| `--dna_context` | No | `FALSE` | `TRUE` appends `dna_context_upstream`, `dna_edit_window`, and `dna_context_downstream` to the output. |
 | `--flanking5` / `--flanking3` | No | `""` | 5'/3' sequence appended to each spacer when screening for restriction sites (EcoRI, KpnI, BsmBI, BsaI, BbsI, PacI). |
 | `--list_organisms` | No | — | Print the organisms installed under the references path and exit. |
 
@@ -124,6 +125,7 @@ PrEditR appends the following columns to the input:
 | `protospacer_coordinates_end` | Genomic end coordinate (higher position) of the protospacer. |
 | `polyA`, `polyC`, `polyG`, `polyT` | `TRUE` if the protospacer contains a homopolymer run (≥4 nt) of the given base. A `polyT` run is a Pol III terminator that can truncate U6-driven sgRNA transcription. |
 | `startingGGGGG` | `TRUE` if the protospacer begins with a run of five G's (`GGGGG`). |
+| `dna_context_upstream`, `dna_edit_window`, `dna_context_downstream` | Only present when `--dna_context TRUE`. Raw genomic DNA sequence of the edit window and the 50 nt immediately upstream/downstream of it, in the sgRNA's own 5'->3' orientation. |
 | `mutation_type` | Classification of the intended mutation (e.g., missense, nonsense, silent). |
 | `wildtype_sequence` | Original amino acid sequence (+/- 7 AA). Target sites are identified by vertical bars. |
 | `mutant_sequence` | Resulting mutant amino acid sequence after the intended edit (+/- 7 AA). |
@@ -588,7 +590,8 @@ singularity exec \
     --indexed_genome $INDEXED_GENOME_PATH \
     --threads 30 \
     --tmp $TEMPORARY_PATH \
-    --non_editing_controls FALSE
+    --non_editing_controls FALSE \
+    --dna_context FALSE
 ```
 
 `PREDITR_MODE=CLI` forces command-line mode; `--references_path` (mirrored by the

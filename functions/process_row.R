@@ -1,6 +1,6 @@
-process_row <- function(row_num, gene_symbol, ensembl_id, uniprot_id, isoforms, target_aa, target_position, 
+process_row <- function(row_num, gene_symbol, ensembl_id, uniprot_id, isoforms, target_aa, target_position,
                         editor, edit_type, organism, genome, txdb, n_mismatches, n_max_alignments, flanking5, flanking3, tmp_folder,
-                        off_targets = FALSE){
+                        off_targets = FALSE, dna_context = FALSE){
   
   target_position <- as.numeric(target_position)
   
@@ -76,7 +76,7 @@ process_row <- function(row_num, gene_symbol, ensembl_id, uniprot_id, isoforms, 
   
   partial_output <- generatePartialOutput(row_num, candidate_guides, genome, target_position, target_aa,
                                           cds_coordinates, strand, editor, edit_type, gene_symbol,
-                                          ensembl_id, absolute_codon_locations, isoforms, off_targets)
+                                          ensembl_id, absolute_codon_locations, isoforms, off_targets, dna_context)
   
   
   return(partial_output)

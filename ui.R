@@ -106,6 +106,13 @@ ui <- navbarPage(
             )}
         ),
 
+        div(class = "section-title", "Output Options"),
+        fluidRow(
+          column(4, style = "text-align: center;",
+                 selectInput("direct_dna_context", "Include DNA Context Columns", choices = c("FALSE", "TRUE"))
+          )
+        ),
+
         div(class = "section-title", "Editors"),
         div(class = "direct-editors-control",
             tags$label(
@@ -198,11 +205,18 @@ ui <- navbarPage(
           column(3, style = "text-align: center;",
                  textInput("batch_genome_path", "Indexed Genome Directory")
           )}
-          
+
         ),
-        
+
         uiOutput("hosted_message_offtargets"),
-        
+
+        div(class = "section-title", "Output Options"),
+        fluidRow(
+          column(4, style = "text-align: center;",
+                 selectInput("dna_context", "Include DNA Context Columns", choices = c("FALSE", "TRUE"))
+          )
+        ),
+
         # --- Editors (File Upload) ---
         div(class = "section-title", "Editors"),
         div(style = "display: flex; justify-content: center;",
@@ -416,6 +430,7 @@ ui <- navbarPage(
               "pam_coordinates_start", "pam_coordinates_end",
               "protospacer_coordinates_start", "protospacer_coordinates_end",
               "polyA / polyC / polyG / polyT", "startingGGGGG",
+              "dna_context_upstream / dna_edit_window / dna_context_downstream",
               "mutation_type",
               "wildtype_sequence", "mutant_sequence", "edits", "warnings", "error",
               "Restriction Enzymes", "Off-Target Alignments (n#)"
@@ -434,6 +449,7 @@ ui <- navbarPage(
               "Genomic end coordinate (higher position) of the protospacer (sgRNA target).",
               "TRUE if the sgRNA contains a homopolymer run (>=4 nt) of A, C, G, or T, respectively. A poly(T) run is a Pol III terminator that can truncate U6-driven sgRNA transcription.",
               "TRUE if the sgRNA begins with a run of five G's (GGGGG).",
+              "Only present when 'Include DNA Context Columns' is enabled. Raw genomic DNA sequence of the edit window and the 50 nt immediately upstream/downstream of it, in the sgRNA's own 5'->3' orientation.",
               "Type of predicted mutation (missense, nonsense, silent, etc.) assuming that any editable base in the edit window will be edited (100% editing efficiency for the edit window).",
               "Wild-type amino acid sequence around the target site (±7 residues). Vertical bars indicate the amino acids whose codons, fully or in part, fall within the edit window.",
               "Mutant amino acid sequence after editing (±7 residues).",

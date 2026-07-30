@@ -324,6 +324,9 @@ server <- function(input, output, session) {
       polyG = "Poly(G)",
       polyT = "Poly(T)",
       startingGGGGG = "Starts GGGGG",
+      dna_context_upstream = "DNA Context (Upstream)",
+      dna_edit_window = "DNA Edit Window",
+      dna_context_downstream = "DNA Context (Downstream)",
       mutation_type = "Mutation Type",
       wildtype_sequence = "Wildtype AA Sequence",
       mutant_sequence = "Mutant AA Sequence",
@@ -719,7 +722,7 @@ server <- function(input, output, session) {
 
   run_shiny_job <- function(batch_file_path, editors_path, job_name, organism, genome_path,
                             n_mismatches, n_max_alignments, off_targets,
-                            non_editing_controls, threads, total_input_lines,
+                            non_editing_controls, dna_context, threads, total_input_lines,
                             button_id) {
     hide_result_controls()
     shinyjs::disable("load_example_output")
@@ -767,7 +770,8 @@ server <- function(input, output, session) {
             non_editing_controls = non_editing_controls,
             tmp = output_folder,
             debug = (Sys.getenv("PREDITR_DEBUG") == "TRUE"),
-            progressor = p
+            progressor = p,
+            dna_context = dna_context
           )
           exit_code
         }) %...>% (function(exit_code) {
@@ -840,6 +844,7 @@ server <- function(input, output, session) {
     n_max_alignments <- isolate(input$batch_n_max_alignments)
     off_targets <- as.logical(isolate(input$off_targets))
     non_editing_controls <- as.logical(isolate(input$non_editing_controls))
+    dna_context <- as.logical(isolate(input$dna_context))
     # hosted_threads is defined in global.R
     threads <- isolate(ifelse(hosted, hosted_threads, input$batch_threads))
 
@@ -870,6 +875,7 @@ server <- function(input, output, session) {
       n_max_alignments = n_max_alignments,
       off_targets = off_targets,
       non_editing_controls = non_editing_controls,
+      dna_context = dna_context,
       threads = threads,
       total_input_lines = input_lines,
       button_id = "run_batch_button"
@@ -913,6 +919,7 @@ server <- function(input, output, session) {
     n_max_alignments <- isolate(input$direct_n_max_alignments)
     off_targets <- as.logical(isolate(input$direct_off_targets))
     non_editing_controls <- as.logical(isolate(input$direct_non_editing_controls))
+    dna_context <- as.logical(isolate(input$direct_dna_context))
     threads <- isolate(ifelse(hosted, hosted_threads, input$direct_threads))
     genome_path <- get_genome_path(organism, input$direct_genome_path)
 
@@ -934,6 +941,7 @@ server <- function(input, output, session) {
       n_max_alignments = n_max_alignments,
       off_targets = off_targets,
       non_editing_controls = non_editing_controls,
+      dna_context = dna_context,
       threads = threads,
       total_input_lines = nrow(direct_targets) + 1L,
       button_id = "run_direct_button"

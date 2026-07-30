@@ -71,6 +71,12 @@ parseArguments <- function(){
   args <- argparser::add_argument(args, "--non_editing_controls", help = "Indicates if PrEditR will search for non-editing guides.",
                        type = "character", default = "FALSE")
 
+  args <- argparser::add_argument(args, "--dna_context", help = "Indicates if PrEditR will append the dna_context_upstream,
+                     dna_edit_window, and dna_context_downstream columns to the output. These report the raw
+                     genomic DNA sequence of the edit window and the 50 nt immediately upstream/downstream of it,
+                     in the guide's own 5'->3' orientation.",
+                       type = "character", default = "FALSE")
+
   args <- argparser::add_argument(args, "--references_path",
                        help = "Directory holding per-organism reference data (one subdirectory per
                      organism, each with a preditr_reference.json). Overrides the
@@ -108,6 +114,7 @@ parseArguments <- function(){
     shiny = parsed_args$shiny,
     off_targets = parsed_args$off_targets,
     non_editing_controls = parsed_args$non_editing_controls,
+    dna_context = parsed_args$dna_context,
     tmp = parsed_args$tmp,
     references_path = parsed_args$references_path,
     reference = parsed_args$reference,

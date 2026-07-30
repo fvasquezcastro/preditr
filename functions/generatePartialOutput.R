@@ -1,6 +1,7 @@
 generatePartialOutput <- function(row_num, candidate_guides, genome, target_position, target_aa,
-                                  cds_coordinates, strand, editor, edit_type, gene_symbol, 
-                                  ensembl_id, absolute_codon_locations, isoforms, off_targets = FALSE){
+                                  cds_coordinates, strand, editor, edit_type, gene_symbol,
+                                  ensembl_id, absolute_codon_locations, isoforms, off_targets = FALSE,
+                                  dna_context = FALSE){
   #Have to take notes of the guides that were skipped to not export them in the partial guideset
   excluded_guides <- c()
   
@@ -103,14 +104,24 @@ generatePartialOutput <- function(row_num, candidate_guides, genome, target_posi
         BsmBI = "",
         BsaI = "",
         BbsI = "",
-        PacI = "", 
+        PacI = "",
         MluI = ""
       )
-      
+
       new_row <- cbind(new_row, enzymes)
+
+      if (isTRUE(dna_context)){
+
+        new_row <- cbind(new_row, data.frame(
+          dna_context_upstream = "",
+          dna_edit_window = "",
+          dna_context_downstream = ""
+        ))
+      }
+
       partial_df <- new_row
 
-    
+
   } else {
     
     #Tag each guide with the appropriate row for the off-target search and final merging
@@ -137,6 +148,17 @@ generatePartialOutput <- function(row_num, candidate_guides, genome, target_posi
     
     #Add something in case the candidate guides list only contains one and is skipped. It would crash and the line
     #would be omitted from the output
+
+    if (isTRUE(dna_context)){
+
+      editing_weights_matrix <- get(editor)@editingWeights
+      editing_weights <- editing_weights_matrix[toupper(edit_type),]
+      editing_window_indices <- c(which(editing_weights != 0)[1],
+                                  tail(which(editing_weights != 0), 1))
+
+      editing_window <- c(as.numeric(colnames(editing_weights_matrix))[editing_window_indices[1]],
+                          as.numeric(colnames(editing_weights_matrix))[editing_window_indices[2]])
+    }
 
     for (i in 1:length(candidate_guides)){
 
@@ -187,9 +209,26 @@ generatePartialOutput <- function(row_num, candidate_guides, genome, target_posi
         )
         
         enzymes[] <- lapply(enzymes, as.character)
-        
+
         new_row <- cbind(new_row, enzymes)
-      
+
+        if (isTRUE(dna_context)){
+
+          dna_ctx <- calculateDNAContext(
+            genome = genome,
+            chromosome = as.character(candidate_guides[i]@seqnames[1]),
+            pam_site = candidate_guides[i]$pam_site,
+            strand = guide_strand,
+            editing_window = editing_window
+          )
+
+          new_row <- cbind(new_row, data.frame(
+            dna_context_upstream = dna_ctx$dna_context_upstream,
+            dna_edit_window = dna_ctx$dna_edit_window,
+            dna_context_downstream = dna_ctx$dna_context_downstream
+          ))
+        }
+
       partial_df <- rbind(partial_df, new_row)
 
     }

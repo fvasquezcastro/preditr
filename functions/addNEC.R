@@ -1,43 +1,45 @@
 addNEC <- function(output, editors_path, non_targeting_controls, flanking5, flanking3,
                    off_targets, genome, indexed_genome, n_mismatches, n_max_alignments,
-                   txdb){
-  
+                   txdb, dna_context = FALSE){
+
   unique_editors <- unique(as.vector(output$editor))
   loadEditors(editors_path, unique_editors)
-  
+
   #An empty GuideSet object is needed
   dummy_seq <- Biostrings::DNAStringSet("AAAAAAAAAAAAAAAAAAAAAAAAAAA")
+
+  nec_mcols_template <- S4Vectors::DataFrame(
+    editor      = character(0),
+    edit_type   = character(0),
+    gene_symbol = character(0),
+    ensembl_id  = character(0),
+    gene_strand = character(0),
+    chromosome  = character(0),
+    intron_exon = character(0)
+  )
+  if (isTRUE(dna_context)){
+    nec_mcols_template <- cbind(nec_mcols_template, S4Vectors::DataFrame(
+      dna_context_upstream = character(0),
+      dna_edit_window = character(0),
+      dna_context_downstream = character(0)
+    ))
+  }
+
   all_nec_guides <- crisprDesign::findSpacers(dummy_seq, bsgenome = NULL, crisprNuclease = crisprBase::SpCas9)
   S4Vectors::mcols(all_nec_guides) <- cbind(
     S4Vectors::mcols(all_nec_guides),
-    S4Vectors::DataFrame(
-      editor      = character(0),
-      edit_type   = character(0),
-      gene_symbol = character(0),
-      ensembl_id  = character(0),
-      gene_strand = character(0),
-      chromosome  = character(0),
-      intron_exon = character(0)
-    )
+    nec_mcols_template
   )
-  
-  
+
+
   for (e in unique_editors){
-    
+
     all_editor_guides <- crisprDesign::findSpacers(dummy_seq, bsgenome = NULL, crisprNuclease = crisprBase::SpCas9)
     S4Vectors::mcols(all_editor_guides) <- cbind(
       S4Vectors::mcols(all_editor_guides),
-      S4Vectors::DataFrame(
-        editor      = character(0),
-        edit_type   = character(0),
-        gene_symbol = character(0),
-        ensembl_id  = character(0),
-        gene_strand = character(0),
-        chromosome  = character(0),
-        intron_exon = character(0)
-      )
+      nec_mcols_template
     )
-    
+
     transcript_ids <- unique(as.vector(output[output$editor == e, ]$ensembl_id))
     edit_type <- unique(as.vector(output[output$editor == e, ]$edit_type))
       
@@ -108,14 +110,29 @@ addNEC <- function(output, editors_path, non_targeting_controls, flanking5, flan
     )
     
     nec_guides <- all_editor_guides[unname(keep_bool)]
-    
+
     if (length(nec_guides) >0 ){
-      
+
+      if (isTRUE(dna_context)){
+
+        dna_ctx <- calculateDNAContext(
+          genome = genome,
+          chromosome = as.character(GenomeInfoDb::seqnames(nec_guides)),
+          pam_site = nec_guides$pam_site,
+          strand = as.character(BiocGenerics::strand(nec_guides)),
+          editing_window = editing_window
+        )
+
+        nec_guides$dna_context_upstream <- dna_ctx$dna_context_upstream
+        nec_guides$dna_edit_window <- dna_ctx$dna_edit_window
+        nec_guides$dna_context_downstream <- dna_ctx$dna_context_downstream
+      }
+
       suppressWarnings(
-        
+
         all_nec_guides <- c(all_nec_guides, nec_guides)
       )
-      
+
     }
 
   }
@@ -185,7 +202,14 @@ addNEC <- function(output, editors_path, non_targeting_controls, flanking5, flan
     MluI = as.character(all_nec_guides$enzymeAnnotation[, "MluI"]),
     stringsAsFactors = FALSE
   )
-  
+
+  if (isTRUE(dna_context)){
+
+    nec_df$dna_context_upstream <- as.character(all_nec_guides$dna_context_upstream)
+    nec_df$dna_edit_window <- as.character(all_nec_guides$dna_edit_window)
+    nec_df$dna_context_downstream <- as.character(all_nec_guides$dna_context_downstream)
+  }
+
   #Just to fill out the columns so that the binding to the output that contains them does not throw an error
   #The columns for the alignments are ONLY included in the output if there are guides. If no guide was found and output_df only
   #contains rows without protospacers, the columns will not be there
