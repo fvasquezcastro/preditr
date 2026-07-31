@@ -112,7 +112,7 @@ PrEditR appends the following columns to the input:
 
 ## Running in Command Line Mode
 
-Users can pull the PrEditR image from [Docker Hub](https://hub.docker.com/r/fvasquezcastro/preditr). Ensure you download the version compatible with your architecture (`amd64` or `arm64`). Run `/home/PrEditR.R --help` in the Docker image for more details. 
+Users can pull the PrEditR image from [Docker Hub](https://hub.docker.com/r/fvasquezcastro/preditr). Use the plain version tag (`fvasquezcastro/preditr:1.10.0`) — it is a multi-arch manifest, so Docker selects the build matching your processor automatically. Run `/home/PrEditR.R --help` in the Docker image for more details. 
 
 ### Running via Singularity
 
@@ -151,14 +151,18 @@ singularity exec \
 ## Running the Shiny App
 
 ### 1. System Architecture
-Identify your chip architecture to download the correct Docker image:
+The plain version tag is multi-arch, so you normally do not need to identify your
+chip architecture at all. Arch-suffixed tags remain available if you need to pin one:
 * **`amd64`**: Intel and AMD processors.
 * **`arm64`**: Apple M-series chips and Snapdragon processors.
+
+On **Windows on ARM**, do not pin `_amd64` — Docker Desktop there cannot reliably run
+`linux/amd64` containers (there is no Rosetta equivalent). Use the plain tag.
 
 ### 2. Getting Started with Docker
 1. **Install Docker Desktop**: Download from the official [Docker website](https://www.docker.com/products/docker-desktop/).
 2. **Download Image**: Search for `fvasquezcastro/preditr` in the Docker Desktop search bar.
-3. **Select Tag**: Select `v1.0_amd64` for Intel/AMD or `v1.0_arm64` for Apple/Snapdragon.
+3. **Select Tag**: Select `1.10.0` — a multi-arch tag that resolves to the right build for your processor (Intel/AMD, Apple Silicon, or Windows on ARM).
 4. **Pull**: Click the **Pull** button to save the image locally.
 
 ### 3. Running the PrEditR App

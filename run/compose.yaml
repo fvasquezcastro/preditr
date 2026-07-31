@@ -3,7 +3,6 @@ name: preditr
 services:
   refs-human:
     image: fvasquezcastro/preditr-ref:human-grch38
-    platform: linux/amd64
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/human && mkdir -p /refs && cp -a /image-refs/human /refs/human"]
@@ -11,7 +10,6 @@ services:
 
   refs-mouse:
     image: fvasquezcastro/preditr-ref:mouse-mm10
-    platform: linux/amd64
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/mouse && mkdir -p /refs && cp -a /image-refs/mouse /refs/mouse"]
@@ -19,7 +17,6 @@ services:
 
   refs-yeast:
     image: fvasquezcastro/preditr-ref:yeast-saccer3
-    platform: linux/amd64
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/yeast && mkdir -p /refs && cp -a /image-refs/yeast /refs/yeast"]
@@ -27,7 +24,6 @@ services:
 
   refs-rat:
     image: fvasquezcastro/preditr-ref:rat-rn7
-    platform: linux/amd64
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/rat && mkdir -p /refs && cp -a /image-refs/rat /refs/rat"]
@@ -35,7 +31,6 @@ services:
 
   refs-zebrafish:
     image: fvasquezcastro/preditr-ref:zebrafish-danrer11
-    platform: linux/amd64
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/zebrafish && mkdir -p /refs && cp -a /image-refs/zebrafish /refs/zebrafish"]
@@ -43,7 +38,6 @@ services:
 
   refs-fruitfly:
     image: fvasquezcastro/preditr-ref:fruitfly-dm6
-    platform: linux/amd64
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/fruitfly && mkdir -p /refs && cp -a /image-refs/fruitfly /refs/fruitfly"]
@@ -51,7 +45,6 @@ services:
 
   refs-celegans:
     image: fvasquezcastro/preditr-ref:celegans-ce11
-    platform: linux/amd64
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/celegans && mkdir -p /refs && cp -a /image-refs/celegans /refs/celegans"]
@@ -59,14 +52,13 @@ services:
 
   refs-chicken:
     image: fvasquezcastro/preditr-ref:chicken-galgal6
-    platform: linux/amd64
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/chicken && mkdir -p /refs && cp -a /image-refs/chicken /refs/chicken"]
     restart: "no"
 
   preditr-shiny:
-    image: fvasquezcastro/preditr:1.9.0_amd64
+    image: fvasquezcastro/preditr:1.10.0
     ports:
       - "3838:3838"
     volumes:
@@ -98,7 +90,7 @@ services:
         condition: service_completed_successfully
 
   preditr-cli:
-    image: fvasquezcastro/preditr:1.9.0_amd64
+    image: fvasquezcastro/preditr:1.10.0
     profiles: ["cli"]
     volumes:
       - preditr_refs:/refs

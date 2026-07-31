@@ -24,3 +24,16 @@ for ARCH in amd64 arm64; do
     --push \
     .
 done
+
+# Publish a multi-arch manifest list so plain `fvasquezcastro/preditr:${VERSION}`
+# resolves to whichever variant matches the host. Without this, every consumer —
+# run/compose.yaml, the Docker Desktop walkthrough, the docs — has to name an
+# arch-suffixed tag, which is how Apple Silicon and Windows/ARM users ended up
+# running the amd64 build under emulation. The arch-suffixed tags stay published
+# for anyone who needs to pin one explicitly.
+docker buildx imagetools create \
+  -t "fvasquezcastro/preditr:${VERSION}" \
+  "fvasquezcastro/preditr:${VERSION}_amd64" \
+  "fvasquezcastro/preditr:${VERSION}_arm64"
+
+echo "Published fvasquezcastro/preditr:${VERSION} (multi-arch: amd64 + arm64)"
