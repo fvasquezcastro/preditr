@@ -11,7 +11,7 @@ Usage:
 Options:
   --config VALUE        TSV organism config. Default: run/reference_organisms.tsv.
   --output VALUE        Compose output file. Default: run/compose.yaml.
-  --app-image VALUE     Shiny app image. Default: fvasquezcastro/preditr:1.9.0_amd64.
+  --app-image VALUE     Shiny app image. Default: fvasquezcastro/preditr:1.10.0.
   --port VALUE          Host port for Shiny. Default: 3838.
   --project-name VALUE  Compose project name. Default: preditr.
   --no-filter           Wire every enabled organism even if its reference image is
@@ -32,7 +32,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # is kept here as run/reference_organisms.tsv so this generator stays self-contained.
 CONFIG="${SCRIPT_DIR}/reference_organisms.tsv"
 OUTPUT="${SCRIPT_DIR}/compose.yaml"
-APP_IMAGE="${PREDITR_APP_IMAGE:-fvasquezcastro/preditr:1.9.0_amd64}"
+APP_IMAGE="${PREDITR_APP_IMAGE:-fvasquezcastro/preditr:1.10.0}"
 PORT="${PREDITR_SHINY_PORT:-3838}"
 PROJECT_NAME="preditr"
 FILTER_LOCAL=true
@@ -113,7 +113,7 @@ YAML
 enabled_services=()
 skipped_missing=()
 line_num=0
-while IFS=$'\t' read -r organism label genome_build image bioc_version platform genome_package annotation_package annotation_object annotation_loader annotation_source_loader annotation_transform bioc_packages cran_packages github_packages enabled; do
+while IFS=$'\t' read -r organism label genome_build image bioc_version platform genome_package annotation_package annotation_object annotation_loader annotation_source_loader annotation_transform bioc_packages cran_packages github_packages standard_chrom_only enabled; do
   line_num=$((line_num + 1))
   if [[ "${line_num}" -eq 1 ]]; then
     continue
@@ -134,10 +134,14 @@ while IFS=$'\t' read -r organism label genome_build image bioc_version platform 
   service_name="refs-${organism}"
   enabled_services+=("${service_name}")
 
+  # No `platform:` pin. Reference images are published as multi-arch manifests
+  # whose payload is architecture-agnostic, so Docker selects the variant that
+  # matches the host. Pinning linux/amd64 here used to force emulation on Apple
+  # Silicon and outright failure on Windows/ARM, where amd64 containers may not
+  # run at all.
   cat >> "${tmp_output}" <<YAML
   ${service_name}:
     image: ${image}
-    platform: ${platform}
     volumes:
       - preditr_refs:/refs
     command: ["sh", "-c", "rm -rf /refs/${organism} && mkdir -p /refs && cp -a /image-refs/${organism} /refs/${organism}"]

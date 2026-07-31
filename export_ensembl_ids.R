@@ -8,7 +8,7 @@ write.table(tx_idx[floor(length(tx_idx)/2)+1:length(tx_idx)], file = "tmp/human_
 
 #For mice
 organism <- "mouse"
-organism_data <- loadOrganismData(organism)
+organism_data <- loadReference(organism)
 txdb_mice <- organism_data$txdb
 tx_idx_mice <- unique(txdb_mice@unlistData$tx_id)
 

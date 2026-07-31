@@ -6,7 +6,8 @@
 # explicit path argument). Each organism directory contains a discovery manifest
 # `preditr_reference.json`, the R library `rlib/`, the annotation object, and
 # `maps/`. This module discovers and loads those references for BOTH the Shiny
-# app and the CLI, replacing the hardcoded human/mouse `loadOrganismData()`.
+# app and the CLI. It fully replaces the old hardcoded human/mouse loader; there
+# is no baked-in genome/annotation fallback left in the image.
 #
 # The image-side loader embedded by references/build_reference_image.sh
 # (reference_loader.R) MUST stay in sync with load_reference() below.
@@ -153,7 +154,34 @@ assertBiocCompatible <- function(manifest) {
   invisible(TRUE)
 }
 
-# Load one organism's reference. Drop-in replacement for loadOrganismData():
+# Load a package the reference declares, failing with the REAL error. This used to
+# be a bare `requireNamespace(pkg, quietly = TRUE)` whose return value was
+# discarded, so a payload that copied incompletely — or an rlib whose compiled
+# packages were built for another architecture — was swallowed here and only
+# surfaced ~20 lines later as an opaque getExportedValue() failure.
+loadReferencePackage <- function(pkg, role, manifest, rlib) {
+  if (is.null(pkg) || !nzchar(pkg)) {
+    stop(sprintf("Reference '%s' declares no %s package.",
+                 manifest$organism_id, role), call. = FALSE)
+  }
+  err <- tryCatch({ loadNamespace(pkg); NULL }, error = function(e) conditionMessage(e))
+  if (is.null(err)) {
+    return(invisible(TRUE))
+  }
+  stop(sprintf(
+    paste0("Reference '%s' needs its %s package '%s', which failed to load: %s\n",
+           "  reference dir: %s\n",
+           "  bundled rlib : %s\n",
+           "  library paths: %s\n",
+           "Check that the payload copied completely, and that any compiled packages ",
+           "in its rlib match this machine's architecture."),
+    manifest$organism_id, role, pkg, err,
+    manifest$reference_dir,
+    if (dir.exists(rlib)) rlib else paste0(rlib, " (absent)"),
+    paste(.libPaths(), collapse = ", ")), call. = FALSE)
+}
+
+# Load one organism's reference:
 # returns list(txdb = <GRangesList>, genome = <BSgenome>, maps_dir, manifest).
 # `organism` matches manifest$organism_id (e.g. "human"); `path` overrides the
 # base references directory (CLI --references_path / PREDITR_REFERENCES_PATH).
@@ -174,14 +202,28 @@ loadReference <- function(organism, path = NULL) {
   manifest <- readReferenceManifest(file.path(reference_dir, "preditr_reference.json"))
   assertBiocCompatible(manifest)
 
-  # Make the reference's bundled packages importable.
+  # Make the reference's bundled packages importable. APPEND rather than prepend:
+  # a payload's rlib is the genome package plus its whole dependency closure, built
+  # for one architecture. Prepending let those bundled copies of Biostrings,
+  # S4Vectors, IRanges, ... shadow the app image's own — harmless when the arches
+  # match, fatal when they don't (an amd64 reference on an arm64 app image). The
+  # only package a reference genuinely adds is the BSgenome data package, and
+  # appending resolves that just as well while leaving shared dependencies to the
+  # app image. assertBiocCompatible() above already guards the version skew that
+  # prepending was protecting against.
   rlib <- file.path(reference_dir, if (!is.null(manifest$r_library_path)) manifest$r_library_path else "rlib")
   if (dir.exists(rlib)) {
-    .libPaths(c(rlib, .libPaths()))
+    .libPaths(c(.libPaths(), rlib))
   }
 
-  requireNamespace(manifest$genome_package, quietly = TRUE)
-  requireNamespace(manifest$annotation_package, quietly = TRUE)
+  # The genome package is always required (getExportedValue() below needs it). The
+  # annotation package is only needed by the "data"/"package-object" loaders — an
+  # "rds" reference reads a prebuilt file and often does not ship the package at
+  # all (human declares crisprDesignData purely as provenance).
+  loadReferencePackage(manifest$genome_package, "genome", manifest, rlib)
+  if (!identical(manifest$annotation_loader, "rds")) {
+    loadReferencePackage(manifest$annotation_package, "annotation", manifest, rlib)
+  }
 
   # Annotation object: rds (preferred, normalized GRangesList) / data / package-object.
   loader <- manifest$annotation_loader

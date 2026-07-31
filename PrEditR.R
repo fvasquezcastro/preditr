@@ -182,9 +182,7 @@ runPrEditR <- function(
   df <- unique(df)
   df$query_num <- 1:nrow(df)
 
-  
-  #organism_data <- loadOrganismData(organism)
-  
+
   #Resolve each row down to an Ensembl transcript ID and a UniProt ID. A row may
   #arrive with any one of gene_symbol / ensembl_id / uniprot_id (the rest blank),
   #so the Ensembl transcript ID is the anchor everything is derived from:
@@ -225,16 +223,17 @@ runPrEditR <- function(
   df$isoforms <- flagIsoforms(organism, df$uniprot_id)
   
   #Genome + annotation, resolved from the Docker reference-image model
-  #(scan PREDITR_REFERENCES_PATH/<organism>). Falls back to the legacy baked-in
-  #crisprDesignData objects while references are being migrated; the fallback
-  #disappears naturally once the hard-cut image ships without them.
+  #(scan PREDITR_REFERENCES_PATH/<organism>). There is no fallback: the app image
+  #stopped baking in crisprDesignData/BSgenome, so the old loadOrganismData()
+  #fallback could only ever fail — and it did so with "package crisprDesignData is
+  #not installed", masking whatever actually went wrong in the resolver. Log the
+  #real reason and re-raise it.
   organism_ref <- tryCatch(
     loadReference(organism, references_path),
     error = function(e) {
-      ParallelLogger::logInfo(paste0(
-        "Reference resolver unavailable (", conditionMessage(e),
-        "); falling back to baked-in ", organism, " data."))
-      loadOrganismData(organism)
+      ParallelLogger::logError(paste0(
+        "Could not load reference for '", organism, "': ", conditionMessage(e)))
+      stop(e)
     }
   )
   full_txdb <- organism_ref$txdb
@@ -315,7 +314,7 @@ runPrEditR <- function(
     "generateErrorOutput", "generateOutput", "generatePartialOutput", 
     "generatePrettyTable", "generateWindowSequences", "getCodingSequences",
     "getWindowSeqs2","isNEC", "loadEditors", "loadFunctions", "loadLibraries",
-    "loadOrganismData", "loadReference", "discoverReferences",
+    "loadReference", "loadReferencePackage", "discoverReferences",
     "readReferenceManifest", "assertBiocCompatible", "referencesBasePath",
     "referenceMapsDir", "mapEnsembl2MGI", "mapEnsembl2Uniprot",
     "mapUniprot2Ensembl", "parseArguments", "process_row",
@@ -383,10 +382,7 @@ runPrEditR <- function(
       }
       if (shiny) {
         suppressMessages(
-          organism_data <- tryCatch(
-            loadReference(organism, references_path),
-            error = function(e) loadOrganismData(organism)
-          )
+          organism_data <- loadReference(organism, references_path)
         )
         genome <- organism_data$genome
         txdb   <- organism_data$txdb

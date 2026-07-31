@@ -212,8 +212,10 @@ fvasquezcastro/preditr-ref:chicken-galgal6     # chicken, galGal6
 
 These eight organisms are enabled in the reference registry
 (`run/reference_organisms.tsv`); additional organisms can be built and published
-from that registry (see below). Reference images are currently built for
-`linux/amd64`; on Apple Silicon they run under Docker Desktop's emulation.
+from that registry (see below). Reference images are published as **multi-arch
+manifests (amd64 + arm64)** and their payloads are architecture-agnostic — they
+contain the genome data package and prebuilt `.rds` annotation, no compiled code —
+so Docker pulls the right variant automatically and nothing runs under emulation.
 
 With Docker Compose you normally **don't pull these by hand** — the Compose
 generator wires the reference images it finds and Docker pulls anything still
@@ -286,12 +288,21 @@ to launch it: **Docker Compose** (recommended — it wires up references for you
 
 PrEditR comes in two builds — pick the one that matches your computer's processor:
 
+**You almost certainly don't need to choose.** Use the plain version tag —
+`fvasquezcastro/preditr:1.10.0` — which is a multi-arch manifest: Docker picks the
+build matching your processor automatically, on Intel/AMD, Apple Silicon and
+Windows on ARM alike.
+
+Arch-suffixed tags (`1.10.0_amd64`, `1.10.0_arm64`) remain published if you ever
+need to pin one explicitly:
+
 * **`amd64`** — Intel or AMD processors (most Windows PCs, older Macs).
 * **`arm64`** — Apple M-series chips (M1/M2/M3/M4) and Snapdragon.
 
-You'll use this later as the *tag* when you download the app, e.g.
-`1.9.0_amd64` or `1.9.0_arm64`. If you're not sure which you have, `amd64` will
-still run on Apple Silicon (just a little slower).
+> **Windows on ARM:** pin nothing. Docker Desktop on Windows/ARM cannot reliably
+> run `linux/amd64` containers — there is no Rosetta equivalent — so an
+> arch-suffixed `_amd64` tag may fail outright. The plain `1.10.0` tag resolves to
+> the native arm64 build.
 
 ### 2. Option A — Docker Compose (recommended)
 
@@ -347,7 +358,7 @@ bind mount to the `preditr-shiny` service in `run/compose.yaml`, for example:
 
 ```yaml
   preditr-shiny:
-    image: fvasquezcastro/preditr:1.9.0_amd64
+    image: fvasquezcastro/preditr:1.10.0
     ports:
       - "3838:3838"
     volumes:
@@ -390,7 +401,7 @@ In the Docker Desktop **search bar** at the top, search for and pull each of the
 
 | Search for | Pick the tag | What it is |
 | :--- | :--- | :--- |
-| `fvasquezcastro/preditr` | `1.9.0_amd64` or `1.9.0_arm64` ([which one?](#1-which-version-to-download)) | The PrEditR app |
+| `fvasquezcastro/preditr` | `1.10.0` (multi-arch — matches your processor automatically) | The PrEditR app |
 | `fvasquezcastro/preditr-ref` | `human-grch38` (or another organism from [the list](#getting-prebuilt-reference-images)) | The organism's genome data |
 
 To pull: type the name, click the result, choose the tag from the **Tag** dropdown,
@@ -485,7 +496,7 @@ See [Command-line arguments](#command-line-arguments) for every flag, or print t
 from the image:
 
 ```sh
-docker run --rm fvasquezcastro/preditr:1.9.0_amd64 --help
+docker run --rm fvasquezcastro/preditr:1.10.0 --help
 ```
 
 ### CLI via Docker Compose
@@ -527,7 +538,7 @@ docker run --rm \
   -v "$PWD/refs":/refs:ro \
   -v "$PWD/inputs":/inputs:ro \
   -v "$PWD/outputs":/outputs \
-  fvasquezcastro/preditr:1.9.0_amd64 \
+  fvasquezcastro/preditr:1.10.0 \
     --input    /inputs/targets.csv \
     --editors  /inputs/editors.csv \
     --output   /outputs \
@@ -604,7 +615,7 @@ directory:
 
 ```sh
 # Docker
-docker run --rm -v "$PWD/refs":/refs:ro fvasquezcastro/preditr:1.9.0_amd64 \
+docker run --rm -v "$PWD/refs":/refs:ro fvasquezcastro/preditr:1.10.0 \
   --list_organisms --references_path /refs
 
 # Docker Compose (uses the shared /refs volume)

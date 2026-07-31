@@ -120,7 +120,7 @@ want() {
 staged=0
 declare -A seen=()
 line_num=0
-while IFS=$'\t' read -r organism label genome_build image bioc_version platform genome_package annotation_package annotation_object annotation_loader annotation_source_loader annotation_transform bioc_packages cran_packages github_packages enabled; do
+while IFS=$'\t' read -r organism label genome_build image bioc_version platform genome_package annotation_package annotation_object annotation_loader annotation_source_loader annotation_transform bioc_packages cran_packages github_packages standard_chrom_only enabled; do
   line_num=$((line_num + 1))
   [[ "${line_num}" -eq 1 ]] && continue
   [[ -z "${organism}" || "${organism:0:1}" == "#" ]] && continue
