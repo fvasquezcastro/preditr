@@ -36,4 +36,12 @@ docker buildx imagetools create \
   "fvasquezcastro/preditr:${VERSION}_amd64" \
   "fvasquezcastro/preditr:${VERSION}_arm64"
 
-echo "Published fvasquezcastro/preditr:${VERSION} (multi-arch: amd64 + arm64)"
+# Move `latest` onto this release. The README tells readers to download the latest
+# published version, so a `latest` that is not re-pointed here would go on serving an
+# older build with no signal that it is stale. Copying the version's manifest list
+# keeps `latest` multi-arch and byte-identical to the tag it mirrors.
+docker buildx imagetools create \
+  -t "fvasquezcastro/preditr:latest" \
+  "fvasquezcastro/preditr:${VERSION}"
+
+echo "Published fvasquezcastro/preditr:${VERSION} and :latest (multi-arch: amd64 + arm64)"
