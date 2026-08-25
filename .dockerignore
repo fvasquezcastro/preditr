@@ -6,10 +6,14 @@
 # maps/ and references/ are kept here defensively: they normally live in the
 # preditr_ref repo, but a local dev checkout may sync maps/ and it must stay out of
 # the image.
+#
+# www/docs/ holds README screenshots. The rest of www/ is served by the Shiny app,
+# but those images are only rendered on GitHub, so they stay out of the image.
 
 maps/
 references/
 run/
+www/docs/
 .git/
 .claude/
 **/.DS_Store
