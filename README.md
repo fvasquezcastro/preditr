@@ -313,18 +313,21 @@ Docker Compose, which is a single command and wires up references automatically.
 
 ### 1. Which version to download
 
-Use the plain version tag, `fvasquezcastro/preditr:1.10.1`. It is a multi-arch manifest,
-so Docker selects the build matching the processor automatically on Intel/AMD, Apple
-Silicon, and Windows on ARM.
+Download the latest published version. At the time of writing that is **1.10.1**, so the
+examples throughout this document name `fvasquezcastro/preditr:1.10.1`. If a newer version
+has been published, substitute its tag. The published tags are listed on
+[Docker Hub](https://hub.docker.com/r/fvasquezcastro/preditr/tags).
 
-Arch-suffixed tags remain published for explicit pinning:
+The plain version tag is a multi-arch manifest, so Docker selects the build matching the
+processor automatically on Intel/AMD, Apple Silicon, and Windows on ARM.
 
-* `1.10.1_amd64` for Intel or AMD processors, meaning most Windows PCs and older Macs.
-* `1.10.1_arm64` for Apple M-series chips and Snapdragon.
+Arch-suffixed tags are also published for explicit pinning, `_amd64` for Intel or AMD
+processors, meaning most Windows PCs and older Macs, and `_arm64` for Apple M-series chips
+and Snapdragon.
 
 On Windows on ARM, do not pin. Docker Desktop on Windows/ARM cannot reliably run
 `linux/amd64` containers, as there is no Rosetta equivalent, so an `_amd64` tag may fail
-outright. The plain `1.10.1` tag resolves to the native arm64 build.
+outright. The plain version tag resolves to the native arm64 build.
 
 ### 2. Option A: Docker Desktop GUI (recommended)
 
@@ -349,7 +352,7 @@ In the Docker Desktop search bar, search for and pull each of the following.
 
 | Search for | Tag | What it is |
 | :--- | :--- | :--- |
-| `fvasquezcastro/preditr` | `1.10.1` | The PrEditR app |
+| `fvasquezcastro/preditr` | the latest version, `1.10.1` at the time of writing | The PrEditR app |
 | `fvasquezcastro/preditr-ref` | `human-grch38`, or another organism from [the list](#getting-prebuilt-reference-images) | The organism's genome data |
 
 To pull, type the name, click the result, choose the tag from the Tag dropdown, and click
@@ -506,6 +509,10 @@ Open a browser at [http://127.0.0.1:3838](http://127.0.0.1:3838).
 The same application image serves both the Shiny app and the CLI. Running the image with
 no arguments launches Shiny; running it with arguments runs the CLI. As with the Shiny
 app, the CLI needs a references directory, supplied the same two ways.
+
+The commands below name the version current at the time of writing, `1.10.1`. Use the
+latest published tag instead if a newer one exists, as described in
+[Which version to download](#1-which-version-to-download).
 
 See [Command-line arguments](#command-line-arguments) for every flag, or print them from
 the image:
