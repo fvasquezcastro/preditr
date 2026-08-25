@@ -4,7 +4,7 @@
 # BASE_IMAGE build-arg. Pushes directly to Docker Hub.
 set -euo pipefail
 
-VERSION=1.10.0
+VERSION=1.10.1
 
 # Ensure the cloud builder exists and is selected (idempotent).
 docker buildx create --driver cloud fvasquezcastro/builder8 --use 2>/dev/null || \

@@ -9,11 +9,15 @@
 #
 # www/docs/ holds README screenshots. The rest of www/ is served by the Shiny app,
 # but those images are only rendered on GitHub, so they stay out of the image.
+#
+# local/ holds benchmark inputs and HPC job scripts. No app code reads it, and it
+# accounted for 48 MB of the 51 MB /app carried through 1.10.0.
 
 maps/
 references/
 run/
 www/docs/
+local/
 .git/
 .claude/
 **/.DS_Store

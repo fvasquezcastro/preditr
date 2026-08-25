@@ -313,18 +313,18 @@ Docker Compose, which is a single command and wires up references automatically.
 
 ### 1. Which version to download
 
-Use the plain version tag, `fvasquezcastro/preditr:1.10.0`. It is a multi-arch manifest,
+Use the plain version tag, `fvasquezcastro/preditr:1.10.1`. It is a multi-arch manifest,
 so Docker selects the build matching the processor automatically on Intel/AMD, Apple
 Silicon, and Windows on ARM.
 
 Arch-suffixed tags remain published for explicit pinning:
 
-* `1.10.0_amd64` for Intel or AMD processors, meaning most Windows PCs and older Macs.
-* `1.10.0_arm64` for Apple M-series chips and Snapdragon.
+* `1.10.1_amd64` for Intel or AMD processors, meaning most Windows PCs and older Macs.
+* `1.10.1_arm64` for Apple M-series chips and Snapdragon.
 
 On Windows on ARM, do not pin. Docker Desktop on Windows/ARM cannot reliably run
 `linux/amd64` containers, as there is no Rosetta equivalent, so an `_amd64` tag may fail
-outright. The plain `1.10.0` tag resolves to the native arm64 build.
+outright. The plain `1.10.1` tag resolves to the native arm64 build.
 
 ### 2. Option A: Docker Desktop GUI (recommended)
 
@@ -349,7 +349,7 @@ In the Docker Desktop search bar, search for and pull each of the following.
 
 | Search for | Tag | What it is |
 | :--- | :--- | :--- |
-| `fvasquezcastro/preditr` | `1.10.0` | The PrEditR app |
+| `fvasquezcastro/preditr` | `1.10.1` | The PrEditR app |
 | `fvasquezcastro/preditr-ref` | `human-grch38`, or another organism from [the list](#getting-prebuilt-reference-images) | The organism's genome data |
 
 To pull, type the name, click the result, choose the tag from the Tag dropdown, and click
@@ -463,7 +463,7 @@ the `preditr-shiny` service in `run/compose.yaml`:
 
 ```yaml
   preditr-shiny:
-    image: fvasquezcastro/preditr:1.10.0
+    image: fvasquezcastro/preditr:1.10.1
     ports:
       - "3838:3838"
     volumes:
@@ -511,7 +511,7 @@ See [Command-line arguments](#command-line-arguments) for every flag, or print t
 the image:
 
 ```sh
-docker run --rm fvasquezcastro/preditr:1.10.0 --help
+docker run --rm fvasquezcastro/preditr:1.10.1 --help
 ```
 
 ### CLI via Docker Compose
@@ -552,7 +552,7 @@ docker run --rm \
   -v "$PWD/refs":/refs:ro \
   -v "$PWD/inputs":/inputs:ro \
   -v "$PWD/outputs":/outputs \
-  fvasquezcastro/preditr:1.10.0 \
+  fvasquezcastro/preditr:1.10.1 \
     --input    /inputs/targets.csv \
     --editors  /inputs/editors.csv \
     --output   /outputs \
@@ -628,7 +628,7 @@ Before running a job, confirm which organisms are discoverable:
 
 ```sh
 # Docker
-docker run --rm -v "$PWD/refs":/refs:ro fvasquezcastro/preditr:1.10.0 \
+docker run --rm -v "$PWD/refs":/refs:ro fvasquezcastro/preditr:1.10.1 \
   --list_organisms --references_path /refs
 
 # Docker Compose, using the shared /refs volume
@@ -713,7 +713,7 @@ shared filesystem, which is the standard HPC configuration. Substitute `singular
 #### Step 1: Build the image
 
 ```bash
-apptainer build preditr_1.10.0.sif docker://fvasquezcastro/preditr:1.10.0
+apptainer build preditr_1.10.1.sif docker://fvasquezcastro/preditr:1.10.1
 ```
 
 The plain tag is a multi-arch manifest, so the correct architecture is selected
@@ -770,7 +770,7 @@ apptainer exec \
   --env PREDITR_MODE=CLI \
   --pwd /app \
   --bind $WORK:$WORK \
-  preditr_1.10.0.sif /app/PrEditR.R \
+  preditr_1.10.1.sif /app/PrEditR.R \
     --list_organisms \
     --references_path $WORK/refs
 ```
@@ -795,7 +795,7 @@ apptainer exec \
   --env PREDITR_MODE=CLI \
   --pwd /app \
   --bind $WORK:$WORK \
-  preditr_1.10.0.sif /app/PrEditR.R \
+  preditr_1.10.1.sif /app/PrEditR.R \
     --job_name brca1_demo \
     --input    $WORK/inputs/targets.csv \
     --editors  $WORK/inputs/editors.csv \

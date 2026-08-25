@@ -58,7 +58,7 @@ services:
     restart: "no"
 
   preditr-shiny:
-    image: fvasquezcastro/preditr:1.10.0
+    image: fvasquezcastro/preditr:1.10.1
     ports:
       - "3838:3838"
     volumes:
@@ -90,7 +90,7 @@ services:
         condition: service_completed_successfully
 
   preditr-cli:
-    image: fvasquezcastro/preditr:1.10.0
+    image: fvasquezcastro/preditr:1.10.1
     profiles: ["cli"]
     volumes:
       - preditr_refs:/refs
